@@ -1,0 +1,76 @@
+@model School_Management_System.ViewModels.StudentEditViewModel
+@{
+    ViewData["Title"] = "Edit Student";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Edit Student Profile</h1>
+        <p class="text-muted mb-0">Update permanent student information. Class history is changed separately.</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Back to Profile</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" method="post">
+            <input type="hidden" asp-for="Id" />
+            <input type="hidden" asp-for="RowVersion" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="FullName" class="form-label"></label>
+                    <input asp-for="FullName" class="form-control" />
+                    <span asp-validation-for="FullName" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="FatherGuardianName" class="form-label"></label>
+                    <input asp-for="FatherGuardianName" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="Gender" class="form-label"></label>
+                    <select asp-for="Gender" class="form-select">
+                        <option value="">Select</option>
+                        <option>Male</option>
+                        <option>Female</option>
+                        <option>Other</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="DateOfBirth" class="form-label"></label>
+                    <input asp-for="DateOfBirth" class="form-control" />
+                    <span asp-validation-for="DateOfBirth" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="BFormCnic" class="form-label"></label>
+                    <input asp-for="BFormCnic" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ContactNumber" class="form-label"></label>
+                    <input asp-for="ContactNumber" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="AdmissionDate" class="form-label"></label>
+                    <input asp-for="AdmissionDate" class="form-control" />
+                    <span asp-validation-for="AdmissionDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Status" class="form-label"></label>
+                    <select asp-for="Status" asp-items="Html.GetEnumSelectList<StudentStatus>()" class="form-select"></select>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Address" class="form-label"></label>
+                    <textarea asp-for="Address" rows="3" class="form-control"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Save Changes</button>
+                <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

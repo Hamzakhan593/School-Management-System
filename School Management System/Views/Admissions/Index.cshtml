@@ -1,0 +1,58 @@
+@model School_Management_System.ViewModels.AdmissionsIndexViewModel
+@{
+    ViewData["Title"] = "Admissions & Enquiries";
+    var classFilter = ViewBag.ClassFilter as IEnumerable<string> ?? Array.Empty<string>();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div><h2 class="mb-1">Admissions & Enquiries</h2><p class="text-muted mb-0">Enquiries, follow-ups and admission pipeline.</p></div>
+    <div class="d-flex gap-2">
+        <a asp-action="Applications" class="btn btn-outline-primary">Admission Applications</a>
+        <a asp-action="ExportAdmissionsCsv" class="btn btn-outline-success">Export Admission Register</a>
+        <a asp-action="CreateEnquiry" class="btn btn-primary">+ New Enquiry</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total enquiries</div><div class="fs-3 fw-semibold">@Model.TotalEnquiries</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Approved</div><div class="fs-3 fw-semibold">@Model.Approved</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Admitted</div><div class="fs-3 fw-semibold">@Model.Admitted</div></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Follow-ups due</div><div class="fs-3 fw-semibold">@Model.FollowUpsDue</div></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-lg-4"><label class="form-label">Search</label><input name="q" value="@Model.Query" class="form-control" placeholder="Student, guardian or phone" /></div>
+        <div class="col-lg-3"><label class="form-label">Stage</label><select name="stage" class="form-select"><option value="">All stages</option>@foreach (var s in Enum.GetValues<AdmissionEnquiryStage>()) { <option value="@s" selected="@(Model.Stage == s)">@s</option> }</select></div>
+        <div class="col-lg-3"><label class="form-label">Desired class</label><select name="desiredClass" class="form-select"><option value="">All classes</option>@foreach (var c in classFilter) { <option value="@c" selected="@(Model.DesiredClass == c)">@c</option> }</select></div>
+        <div class="col-lg-2 d-grid"><button class="btn btn-outline-primary">Filter</button></div>
+    </form>
+</div></div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white fw-semibold">Enquiry Register</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Student</th><th>Guardian / Contact</th><th>Class</th><th>Stage</th><th>Follow-up</th><th>Session</th><th></th></tr></thead>
+            <tbody>
+            @if (!Model.Enquiries.Any()) { <tr><td colspan="7" class="text-center text-muted py-4">No enquiries found.</td></tr> }
+            @foreach (var item in Model.Enquiries)
+            {
+                <tr>
+                    <td><div class="fw-semibold">@item.StudentName</div><div class="small text-muted">@item.SourceReferral</div></td>
+                    <td>@item.ParentGuardianName<br /><span class="small text-muted">@item.ContactNumber</span></td>
+                    <td>@item.DesiredClass</td>
+                    <td><span class="badge text-bg-secondary">@item.Stage</span></td>
+                    <td>@(item.FollowUpDate?.ToString("dd MMM yyyy") ?? "-")</td>
+                    <td>@(item.AcademicSession?.Name ?? "-")</td>
+                    <td class="text-end"><a asp-action="EnquiryDetails" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Open</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.ClassStats.Any())
+{
+    <div class="card border-0 shadow-sm"><div class="card-header bg-white fw-semibold">Class-wise Enquiry Statistics</div><div class="table-responsive"><table class="table mb-0"><thead class="table-light"><tr><th>Desired class</th><th>Enquiries</th><th>Admitted</th></tr></thead><tbody>@foreach (var s in Model.ClassStats) { <tr><td>@s.DesiredClass</td><td>@s.EnquiryCount</td><td>@s.AdmittedCount</td></tr> }</tbody></table></div></div>
+}

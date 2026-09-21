@@ -1,0 +1,164 @@
+@model School_Management_System.ViewModels.AcademicSessionSetupViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Session Setup";
+    var historical = Model.Session.Status is AcademicSessionStatus.Closed or AcademicSessionStatus.Archived;
+    var canHistoricalEdit = User.IsInRole("Principal") || User.IsInRole("SuperAdmin");
+    var canEdit = !historical || canHistoricalEdit;
+    var scheme = Model.Session.GradingSchemes.FirstOrDefault(x => x.IsDefault) ?? Model.Session.GradingSchemes.FirstOrDefault();
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h2 class="mb-1">@Model.Session.Name Setup</h2>
+        <div class="text-muted">@Model.Session.StartDate.ToString("dd MMM yyyy") – @Model.Session.EndDate.ToString("dd MMM yyyy") • @Model.Session.WorkingDaysPerWeek working days/week</div>
+    </div>
+    <div class="text-end">
+        <span class="badge bg-secondary fs-6">@Model.Session.Status</span>
+        <div class="mt-2"><a asp-action="Edit" asp-route-id="@Model.Session.Id" class="btn btn-sm btn-outline-secondary">Edit Session</a></div>
+    </div>
+</div>
+
+@if (historical)
+{
+    <div class="alert @(canHistoricalEdit ? "alert-warning" : "alert-secondary")">
+        This is historical session data. @(canHistoricalEdit ? "You have Principal/SuperAdmin correction permission; all changes are audited." : "It is read-only for your role.")
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">Terms / Semesters</div>
+            <div class="card-body">
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Name</th><th>Dates</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var term in Model.Session.Terms)
+                        {
+                            <tr>
+                                <td>@term.Name</td>
+                                <td>@term.StartDate.ToString("dd MMM yy") – @term.EndDate.ToString("dd MMM yy")</td>
+                                <td class="text-end">
+                                    @if (canEdit)
+                                    {
+                                        <form asp-action="DeleteTerm" asp-route-id="@term.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()<button class="btn btn-sm btn-link text-danger" onclick="return confirm('Remove this term?')">Remove</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Session.Terms.Any()) { <tr><td colspan="3" class="text-muted">No terms added.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+                @if (canEdit)
+                {
+                    <form asp-action="AddTerm" method="post" class="row g-2">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="NewTerm.AcademicSessionId" type="hidden" />
+                        <div class="col-12"><input asp-for="NewTerm.Name" class="form-control" placeholder="Term name e.g. First Term" /></div>
+                        <div class="col-md-5"><input asp-for="NewTerm.StartDate" class="form-control" /></div>
+                        <div class="col-md-5"><input asp-for="NewTerm.EndDate" class="form-control" /></div>
+                        <div class="col-md-2"><input asp-for="NewTerm.DisplayOrder" class="form-control" placeholder="#" /></div>
+                        <div class="col-12"><button class="btn btn-sm btn-primary">Add Term</button></div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header fw-semibold">School Calendar / Holidays</div>
+            <div class="card-body">
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Holiday</th><th>Dates</th><th></th></tr></thead>
+                        <tbody>
+                        @foreach (var holiday in Model.Session.Holidays)
+                        {
+                            <tr>
+                                <td>@holiday.Name</td>
+                                <td>@holiday.StartDate.ToString("dd MMM yy") – @holiday.EndDate.ToString("dd MMM yy")</td>
+                                <td class="text-end">
+                                    @if (canEdit)
+                                    {
+                                        <form asp-action="DeleteHoliday" asp-route-id="@holiday.Id" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()<button class="btn btn-sm btn-link text-danger" onclick="return confirm('Remove this holiday?')">Remove</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (!Model.Session.Holidays.Any()) { <tr><td colspan="3" class="text-muted">No holidays/calendar entries.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+                @if (canEdit)
+                {
+                    <form asp-action="AddHoliday" method="post" class="row g-2">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="NewHoliday.AcademicSessionId" type="hidden" />
+                        <div class="col-12"><input asp-for="NewHoliday.Name" class="form-control" placeholder="Holiday / event name" /></div>
+                        <div class="col-md-6"><input asp-for="NewHoliday.StartDate" class="form-control" /></div>
+                        <div class="col-md-6"><input asp-for="NewHoliday.EndDate" class="form-control" /></div>
+                        <div class="col-12"><input asp-for="NewHoliday.Notes" class="form-control" placeholder="Optional note" /></div>
+                        <div class="col-12"><button class="btn btn-sm btn-primary">Add Calendar Entry</button></div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">Default Grading Scheme</div>
+            <div class="card-body">
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Grade</th><th>Percentage Range</th><th>Remarks</th><th></th></tr></thead>
+                        <tbody>
+                        @if (scheme is not null)
+                        {
+                            foreach (var rule in scheme.Rules)
+                            {
+                                <tr>
+                                    <td class="fw-semibold">@rule.Grade</td>
+                                    <td>@rule.MinPercentage.ToString("0.##")% – @rule.MaxPercentage.ToString("0.##")%</td>
+                                    <td>@rule.Remarks</td>
+                                    <td class="text-end">
+                                        @if (canEdit)
+                                        {
+                                            <form asp-action="DeleteGradeRule" asp-route-id="@rule.Id" method="post" class="d-inline">
+                                                @Html.AntiForgeryToken()<button class="btn btn-sm btn-link text-danger" onclick="return confirm('Remove this grading rule?')">Remove</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        }
+                        @if (scheme is null || !scheme.Rules.Any()) { <tr><td colspan="4" class="text-muted">No grading rules yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+                @if (canEdit)
+                {
+                    <form asp-action="AddGradeRule" method="post" class="row g-2 align-items-end">
+                        @Html.AntiForgeryToken()
+                        <input asp-for="NewGradeRule.AcademicSessionId" type="hidden" />
+                        <div class="col-md-2"><label class="form-label">Grade</label><input asp-for="NewGradeRule.Grade" class="form-control" placeholder="A+" /></div>
+                        <div class="col-md-2"><label class="form-label">Minimum %</label><input asp-for="NewGradeRule.MinPercentage" class="form-control" /></div>
+                        <div class="col-md-2"><label class="form-label">Maximum %</label><input asp-for="NewGradeRule.MaxPercentage" class="form-control" /></div>
+                        <div class="col-md-4"><label class="form-label">Remarks</label><input asp-for="NewGradeRule.Remarks" class="form-control" placeholder="Excellent" /></div>
+                        <div class="col-md-2"><button class="btn btn-primary w-100">Add Rule</button></div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4"><a asp-action="Index" class="btn btn-outline-secondary">Back to Sessions</a></div>

@@ -1,0 +1,57 @@
+html {
+  font-size: 14px;
+  position: relative;
+  min-height: 100%;
+}
+
+@media (min-width: 768px) {
+  html { font-size: 16px; }
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus, .form-select:focus {
+  box-shadow: 0 0 0 .2rem rgba(13, 110, 253, .18);
+}
+
+.sms-navbar {
+  background: linear-gradient(100deg, #123a6d, #1f5f9f);
+}
+
+.auth-shell {
+  min-height: calc(100vh - 210px);
+  display: grid;
+  place-items: center;
+  padding: 2rem 0;
+}
+
+.auth-card {
+  width: min(100%, 520px);
+  background: #fff;
+  border-radius: 1rem;
+  padding: 2rem;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-logo {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #123a6d;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+
+.card { border-radius: .9rem; }
+.table > :not(caption) > * > * { padding: .85rem .9rem; }

@@ -1,0 +1,78 @@
+@model School_Management_System.ViewModels.SchoolProfileViewModel
+@{
+    ViewData["Title"] = "School Profile";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">School Profile</h2>
+        <p class="text-muted mb-0">Basic information used across challans, receipts, result cards and reports.</p>
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Model.ExistingLogoPath))
+    {
+        <img src="@Model.ExistingLogoPath" alt="School logo" style="max-height:70px;max-width:140px" class="border rounded bg-white p-1" />
+    }
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <form asp-action="Index" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="ExistingLogoPath" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="RegistrationNumber" class="form-label"></label>
+                    <input asp-for="RegistrationNumber" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="PrincipalName" class="form-label"></label>
+                    <input asp-for="PrincipalName" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Phone" class="form-label"></label>
+                    <input asp-for="Phone" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label asp-for="Email" class="form-label"></label>
+                    <input asp-for="Email" class="form-control" />
+                    <span asp-validation-for="Email" class="text-danger"></span>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Address" class="form-label"></label>
+                    <textarea asp-for="Address" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ChallanFooterText" class="form-label"></label>
+                    <textarea asp-for="ChallanFooterText" class="form-control" rows="2" placeholder="Payment instructions / bank details / note"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="ReceiptFooterText" class="form-label"></label>
+                    <textarea asp-for="ReceiptFooterText" class="form-control" rows="2" placeholder="Thank you / office note"></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Logo" class="form-label"></label>
+                    <input asp-for="Logo" class="form-control" accept=".png,.jpg,.jpeg,.webp" />
+                    <div class="form-text">PNG/JPG/WEBP, maximum 2 MB.</div>
+                    <span asp-validation-for="Logo" class="text-danger"></span>
+                </div>
+            </div>
+
+            <div class="mt-4 d-flex gap-2">
+                <button class="btn btn-primary" type="submit">Save School Profile</button>
+                <a class="btn btn-outline-secondary" asp-controller="AcademicSessions" asp-action="Index">Academic Sessions</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,47 @@
+@using Microsoft.AspNetCore.Identity
+@inject UserManager<School_Management_System.Models.ApplicationUser> UserManager
+@{
+    var appUser = await UserManager.GetUserAsync(User);
+    var roleName = ViewData["RoleName"]?.ToString() ?? Model?.ToString() ?? "User";
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h2 mb-1">@roleName Dashboard</h1>
+        <p class="text-secondary mb-0">Welcome, @(appUser?.FullName ?? User.Identity?.Name).</p>
+    </div>
+    <span class="badge text-bg-primary fs-6">M01 Active</span>
+</div>
+
+@if (TempData["Success"] is string success)
+{
+    <div class="alert alert-success">@success</div>
+}
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <h2 class="h5">Authentication</h2>
+                <p class="text-secondary mb-0">Login, logout, lockout and password management are configured.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <h2 class="h5">Role access</h2>
+                <p class="text-secondary mb-0">This dashboard is protected by your assigned school role.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body">
+                <h2 class="h5">Next module</h2>
+                <p class="text-secondary mb-0">M02 will add the school profile and academic session foundation.</p>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,70 @@
+@model IEnumerable<School_Management_System.Models.AcademicSession>
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Academic Sessions";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Academic Sessions</h2>
+        <p class="text-muted mb-0">Lifecycle: Draft → Active → Closed → Archived. Only one session can be Active.</p>
+    </div>
+    <a asp-action="Create" class="btn btn-primary">+ New Session</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Session</th><th>Dates</th><th>Working Days</th><th>Status</th><th class="text-end">Actions</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model)
+            {
+                var badge = item.Status switch
+                {
+                    AcademicSessionStatus.Active => "bg-success",
+                    AcademicSessionStatus.Closed => "bg-secondary",
+                    AcademicSessionStatus.Archived => "bg-dark",
+                    _ => "bg-warning text-dark"
+                };
+                <tr>
+                    <td class="fw-semibold">@item.Name</td>
+                    <td>@item.StartDate.ToString("dd MMM yyyy") – @item.EndDate.ToString("dd MMM yyyy")</td>
+                    <td>@item.WorkingDaysPerWeek / week</td>
+                    <td><span class="badge @badge">@item.Status</span></td>
+                    <td class="text-end">
+                        <a asp-action="Setup" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Setup</a>
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        @if (item.Status == AcademicSessionStatus.Draft)
+                        {
+                            <form asp-action="Activate" asp-route-id="@item.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-success" onclick="return confirm('Activate this academic session?')">Activate</button>
+                            </form>
+                        }
+                        @if (item.Status == AcademicSessionStatus.Active)
+                        {
+                            <form asp-action="Close" asp-route-id="@item.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-outline-danger" onclick="return confirm('Close this active session? Normal admins will no longer edit historical setup.')">Close</button>
+                            </form>
+                        }
+                        @if (item.Status == AcademicSessionStatus.Closed && (User.IsInRole("Principal") || User.IsInRole("SuperAdmin")))
+                        {
+                            <form asp-action="Archive" asp-route-id="@item.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-dark" onclick="return confirm('Archive this session?')">Archive</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">No academic session yet. Create the first one.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

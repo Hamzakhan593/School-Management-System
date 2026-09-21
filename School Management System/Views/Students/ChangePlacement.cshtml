@@ -1,0 +1,116 @@
+@model School_Management_System.ViewModels.StudentEnrollmentFormViewModel
+@{
+    var student = (Student)ViewBag.Student;
+    var classes = (IEnumerable<SchoolClass>)(ViewBag.Classes ?? Array.Empty<SchoolClass>());
+    var sections = (IEnumerable<Section>)(ViewBag.Sections ?? Array.Empty<Section>());
+    var groups = (IEnumerable<AcademicGroup>)(ViewBag.Groups ?? Array.Empty<AcademicGroup>());
+    ViewData["Title"] = "Change Student Placement";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-1">Academic Placement</h1>
+        <p class="text-muted mb-0">@student.FullName — @student.AdmissionNumber</p>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@student.Id">Back to Profile</a>
+</div>
+
+<div class="alert alert-info">
+    M05 uses official Class, Section and Group/Stream masters. Saving a new placement keeps the previous placement in history.
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="ChangePlacement" method="post">
+            <input type="hidden" asp-for="StudentId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label asp-for="AcademicSessionId" class="form-label"></label>
+                    <select asp-for="AcademicSessionId" asp-items="ViewBag.AcademicSessions" class="form-select">
+                        <option value="">Select academic session</option>
+                    </select>
+                    <span asp-validation-for="AcademicSessionId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="EffectiveFrom" class="form-label"></label>
+                    <input asp-for="EffectiveFrom" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="SchoolClassId" class="form-label"></label>
+                    <select asp-for="SchoolClassId" id="SchoolClassId" class="form-select">
+                        <option value="">Select class</option>
+                        @foreach (var item in classes)
+                        {
+                            <option value="@item.Id">@item.Name</option>
+                        }
+                    </select>
+                    <span asp-validation-for="SchoolClassId" class="text-danger"></span>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="SectionId" class="form-label"></label>
+                    <select asp-for="SectionId" id="SectionId" class="form-select">
+                        <option value="">No section</option>
+                        @foreach (var item in sections)
+                        {
+                            <option value="@item.Id" data-class-id="@item.SchoolClassId">@item.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="RollNumber" class="form-label"></label>
+                    <input asp-for="RollNumber" class="form-control" />
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="AcademicGroupId" class="form-label"></label>
+                    <select asp-for="AcademicGroupId" id="AcademicGroupId" class="form-select">
+                        <option value="">No group / stream</option>
+                        @foreach (var item in groups)
+                        {
+                            <option value="@item.Id" data-class-id="@item.SchoolClassId">@item.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label asp-for="Status" class="form-label"></label>
+                    <select asp-for="Status" asp-items="Html.GetEnumSelectList<StudentEnrollmentStatus>()" class="form-select"></select>
+                </div>
+                <div class="col-12">
+                    <label asp-for="Notes" class="form-label"></label>
+                    <textarea asp-for="Notes" rows="3" class="form-control"></textarea>
+                </div>
+            </div>
+            <button class="btn btn-primary mt-4" type="submit">Save New Placement</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const classSelect = document.getElementById('SchoolClassId');
+            const sectionSelect = document.getElementById('SectionId');
+            const groupSelect = document.getElementById('AcademicGroupId');
+
+            function filterOptions(select) {
+                if (!select) return;
+                const selectedClass = classSelect?.value || '';
+                [...select.options].forEach((option, index) => {
+                    if (index === 0) return;
+                    const visible = !selectedClass || option.dataset.classId === selectedClass;
+                    option.hidden = !visible;
+                    if (!visible && option.selected) select.value = '';
+                });
+            }
+
+            function refresh() {
+                filterOptions(sectionSelect);
+                filterOptions(groupSelect);
+            }
+
+            classSelect?.addEventListener('change', refresh);
+            refresh();
+        })();
+    </script>
+}

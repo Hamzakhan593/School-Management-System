@@ -1,0 +1,57 @@
+@model School_Management_System.ViewModels.AdmissionEnquiryFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="StudentName" class="form-label"></label>
+        <input asp-for="StudentName" class="form-control" />
+        <span asp-validation-for="StudentName" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="ParentGuardianName" class="form-label"></label>
+        <input asp-for="ParentGuardianName" class="form-control" />
+        <span asp-validation-for="ParentGuardianName" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="ContactNumber" class="form-label"></label>
+        <input asp-for="ContactNumber" class="form-control" />
+        <span asp-validation-for="ContactNumber" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Email" class="form-label"></label>
+        <input asp-for="Email" class="form-control" />
+        <span asp-validation-for="Email" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="DesiredClass" class="form-label"></label>
+        <input asp-for="DesiredClass" class="form-control" placeholder="e.g. Grade 6" />
+        <span asp-validation-for="DesiredClass" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="AcademicSessionId" class="form-label"></label>
+        <select asp-for="AcademicSessionId" asp-items="ViewBag.AcademicSessions" class="form-select">
+            <option value="">-- Select / decide later --</option>
+        </select>
+        <span asp-validation-for="AcademicSessionId" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Stage" class="form-label"></label>
+        <select asp-for="Stage" asp-items="Html.GetEnumSelectList<AdmissionEnquiryStage>()" class="form-select"></select>
+        <span asp-validation-for="Stage" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="FollowUpDate" class="form-label"></label>
+        <input asp-for="FollowUpDate" class="form-control" />
+        <span asp-validation-for="FollowUpDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="SourceReferral" class="form-label"></label>
+        <input asp-for="SourceReferral" class="form-control" placeholder="Walk-in, Facebook, existing parent, etc." />
+        <span asp-validation-for="SourceReferral" class="text-danger"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Notes" class="form-label"></label>
+        <textarea asp-for="Notes" class="form-control" rows="4"></textarea>
+        <span asp-validation-for="Notes" class="text-danger"></span>
+    </div>
+</div>

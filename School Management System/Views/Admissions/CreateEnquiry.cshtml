@@ -1,0 +1,15 @@
+@model School_Management_System.ViewModels.AdmissionEnquiryFormViewModel
+@{
+    ViewData["Title"] = "New Admission Enquiry";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div><h2 class="mb-1">New Admission Enquiry</h2><p class="text-muted mb-0">Record a new prospective student and follow-up.</p></div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+</div>
+<div class="card shadow-sm border-0"><div class="card-body p-4">
+    <form asp-action="CreateEnquiry" method="post">
+        <partial name="_EnquiryForm" model="Model" />
+        <div class="mt-4"><button class="btn btn-primary" type="submit">Save Enquiry</button></div>
+    </form>
+</div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

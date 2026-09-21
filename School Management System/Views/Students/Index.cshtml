@@ -1,0 +1,122 @@
+@model School_Management_System.ViewModels.StudentIndexViewModel
+@{
+    ViewData["Title"] = "Students";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Student Management</h1>
+        <p class="text-muted mb-0">Search and view the complete student profile and academic placement history.</p>
+    </div>
+    @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Receptionist))
+    {
+        <a class="btn btn-primary" asp-controller="Admissions" asp-action="CreateEnquiry">+ New Admission</a>
+    }
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Total Students</div><div class="display-6 fw-semibold">@Model.TotalStudents</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Active</div><div class="display-6 fw-semibold">@Model.ActiveStudents</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Other Status</div><div class="display-6 fw-semibold">@Model.InactiveStudents</div></div></div></div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label">Search</label>
+                <input class="form-control" name="q" value="@Model.Query" placeholder="Name, admission no, roll no, parent phone, B-Form" />
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label class="form-label">Status</label>
+                <select class="form-select" name="status">
+                    <option value="">All</option>
+                    @foreach (var item in Enum.GetValues<StudentStatus>())
+                    {
+                        <option value="@item" selected="@(Model.Status == item)">@item</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label class="form-label">Class</label>
+                <select class="form-select" name="className">
+                    <option value="">All</option>
+                    @foreach (var cls in Model.Classes)
+                    {
+                        <option value="@cls" selected="@(Model.ClassName == cls)">@cls</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2">
+                <label class="form-label">Session</label>
+                <select class="form-select" name="academicSessionId">
+                    <option value="">All</option>
+                    @foreach (var session in Model.Sessions)
+                    {
+                        <option value="@session.Id" selected="@(Model.AcademicSessionId == session.Id)">@session.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-3 col-lg-2 d-grid">
+                <button class="btn btn-outline-primary" type="submit">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Admission No.</th>
+                        <th>Student</th>
+                        <th>Class / Section</th>
+                        <th>Roll No.</th>
+                        <th>Guardian Phone</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @if (Model.Students.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-center text-muted py-5">No students match the selected filters.</td></tr>
+                }
+                else
+                {
+                    @foreach (var student in Model.Students)
+                    {
+                        var placement = student.Enrollments.FirstOrDefault(x => x.IsCurrent);
+                        var guardian = student.StudentGuardians.OrderByDescending(x => x.IsPrimary).FirstOrDefault()?.Guardian;
+                        <tr>
+                            <td class="fw-semibold">@student.AdmissionNumber</td>
+                            <td>
+                                <div class="fw-semibold">@student.FullName</div>
+                                <small class="text-muted">@(student.BFormCnic ?? "No B-Form/CNIC")</small>
+                            </td>
+                            <td>
+                                @if (placement is null)
+                                {
+                                    <span class="text-muted">Not assigned</span>
+                                }
+                                else
+                                {
+                                    <span>@placement.ClassName</span>
+                                    @if (!string.IsNullOrWhiteSpace(placement.SectionName)) { <span> / @placement.SectionName</span> }
+                                    <div><small class="text-muted">@placement.AcademicSession.Name</small></div>
+                                }
+                            </td>
+                            <td>@(placement?.RollNumber ?? student.RollNumber ?? "—")</td>
+                            <td>@(guardian?.Phone ?? "—")</td>
+                            <td><span class="badge text-bg-@(student.Status == StudentStatus.Active ? "success" : "secondary")">@student.Status</span></td>
+                            <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@student.Id">Open Profile</a></td>
+                        </tr>
+                    }
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

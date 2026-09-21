@@ -1,0 +1,58 @@
+@model School_Management_System.ViewModels.AdmissionApplicationFormViewModel
+@{
+    var isNew = Model.Id == 0;
+    var action = isNew ? "StartAdmission" : "EditApplication";
+    ViewData["Title"] = isNew ? "Admission Form" : "Edit Admission Form";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h2 class="mb-1">@(isNew ? "New Admission Form" : "Edit Admission Form")</h2><p class="text-muted mb-0">Complete student, guardian, previous school and emergency information.</p></div>
+    <a asp-action="@(isNew ? "Index" : "ApplicationDetails")" asp-route-id="@(isNew ? null : Model.Id)" class="btn btn-outline-secondary">Back</a>
+</div>
+<div class="card border-0 shadow-sm"><div class="card-body p-4">
+<form asp-action="@action" method="post">
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="AdmissionEnquiryId" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+    <h5 class="mb-3">Student Information</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6"><label asp-for="StudentName" class="form-label"></label><input asp-for="StudentName" class="form-control" /><span asp-validation-for="StudentName" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="Gender" class="form-label"></label><input asp-for="Gender" class="form-control" placeholder="Male / Female" /></div>
+        <div class="col-md-3"><label asp-for="DateOfBirth" class="form-label"></label><input asp-for="DateOfBirth" class="form-control" /><span asp-validation-for="DateOfBirth" class="text-danger"></span></div>
+        <div class="col-md-4"><label asp-for="BFormCnic" class="form-label"></label><input asp-for="BFormCnic" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="StudentContactNumber" class="form-label"></label><input asp-for="StudentContactNumber" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="DesiredClass" class="form-label"></label><input asp-for="DesiredClass" class="form-control" /><span asp-validation-for="DesiredClass" class="text-danger"></span></div>
+        <div class="col-md-6"><label asp-for="AcademicSessionId" class="form-label"></label><select asp-for="AcademicSessionId" asp-items="ViewBag.AcademicSessions" class="form-select"></select><span asp-validation-for="AcademicSessionId" class="text-danger"></span></div>
+        <div class="col-md-6"><label asp-for="AdmissionDate" class="form-label"></label><input asp-for="AdmissionDate" class="form-control" /><span asp-validation-for="AdmissionDate" class="text-danger"></span></div>
+        <div class="col-12"><label asp-for="Address" class="form-label"></label><textarea asp-for="Address" class="form-control" rows="2"></textarea></div>
+    </div>
+
+    <h5 class="mb-3">Previous School</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6"><label asp-for="PreviousSchoolName" class="form-label"></label><input asp-for="PreviousSchoolName" class="form-control" /></div>
+        <div class="col-md-6"><label asp-for="PreviousClass" class="form-label"></label><input asp-for="PreviousClass" class="form-control" /></div>
+        <div class="col-12"><label asp-for="PreviousResultSummary" class="form-label"></label><textarea asp-for="PreviousResultSummary" class="form-control" rows="2"></textarea></div>
+    </div>
+
+    <h5 class="mb-3">Guardian Information</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-md-6"><label asp-for="GuardianName" class="form-label"></label><input asp-for="GuardianName" class="form-control" /><span asp-validation-for="GuardianName" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="GuardianRelationship" class="form-label"></label><input asp-for="GuardianRelationship" class="form-control" /><span asp-validation-for="GuardianRelationship" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="GuardianPhone" class="form-label"></label><input asp-for="GuardianPhone" class="form-control" /><span asp-validation-for="GuardianPhone" class="text-danger"></span></div>
+        <div class="col-md-4"><label asp-for="GuardianOccupation" class="form-label"></label><input asp-for="GuardianOccupation" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="GuardianCnic" class="form-label"></label><input asp-for="GuardianCnic" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="GuardianAddress" class="form-label"></label><input asp-for="GuardianAddress" class="form-control" /></div>
+    </div>
+
+    <h5 class="mb-3">Emergency Contact</h5>
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><label asp-for="EmergencyContactName" class="form-label"></label><input asp-for="EmergencyContactName" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="EmergencyContactRelationship" class="form-label"></label><input asp-for="EmergencyContactRelationship" class="form-control" /></div>
+        <div class="col-md-4"><label asp-for="EmergencyContactPhone" class="form-label"></label><input asp-for="EmergencyContactPhone" class="form-control" /></div>
+        <div class="col-12"><label asp-for="Notes" class="form-label"></label><textarea asp-for="Notes" class="form-control" rows="3"></textarea></div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">@(isNew ? "Create Admission Form" : "Save Changes")</button>
+</form>
+</div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

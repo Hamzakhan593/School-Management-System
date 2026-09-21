@@ -1,0 +1,7 @@
+@model School_Management_System.ViewModels.ClassRosterViewModel
+@{ ViewData["Title"] = "Class Roster"; }
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h1 class="h3 mb-1">@Model.SchoolClass.Name @(Model.Section is null ? "" : "- " + Model.Section.Name)</h1><div class="text-muted">@Model.AcademicSession.Name · @Model.Enrollments.Count student(s)</div></div><a asp-action="Index" asp-route-sessionId="@Model.AcademicSession.Id" class="btn btn-outline-secondary">Back</a></div>
+<div class="card shadow-sm"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Roll</th><th>Admission No.</th><th>Student</th><th>Section</th><th>Group</th><th></th></tr></thead><tbody>
+@foreach(var e in Model.Enrollments){<tr><td>@e.RollNumber</td><td>@e.Student.AdmissionNumber</td><td>@e.Student.FullName</td><td>@e.SectionName</td><td>@e.GroupStream</td><td>@if(User.IsInRole(AppRoles.SuperAdmin)||User.IsInRole(AppRoles.Principal)||User.IsInRole(AppRoles.Admin)){<a asp-controller="Students" asp-action="ChangePlacement" asp-route-id="@e.StudentId" class="btn btn-sm btn-outline-primary">Transfer / Change</a>}</td></tr>}
+@if(!Model.Enrollments.Any()){<tr><td colspan="6" class="text-center text-muted py-4">No current students found for this selection.</td></tr>}
+</tbody></table></div></div>

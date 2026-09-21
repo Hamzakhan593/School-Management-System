@@ -1,0 +1,184 @@
+@model School_Management_System.ViewModels.AttendanceMarkingViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Student Attendance";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-1">Student Attendance</h2>
+        <div class="text-muted">Daily class/section attendance with controlled corrections.</div>
+    </div>
+    <a class="btn btn-outline-primary" asp-action="MonthlyReport"
+       asp-route-academicSessionId="@Model.AcademicSessionId"
+       asp-route-schoolClassId="@(Model.SchoolClassId > 0 ? Model.SchoolClassId : null)"
+       asp-route-sectionId="@Model.SectionId">Monthly Report</a>
+</div>
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-3 align-items-end">
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">Academic Session</label>
+                <select class="form-select" name="academicSessionId">
+                    @foreach (var session in Model.Sessions)
+                    {
+                        <option value="@session.Id" selected="@(session.Id == Model.AcademicSessionId)">@session.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label">Class</label>
+                <select class="form-select" name="schoolClassId">
+                    <option value="">-- Select class --</option>
+                    @foreach (var schoolClass in Model.Classes)
+                    {
+                        <option value="@schoolClass.Id" selected="@(schoolClass.Id == Model.SchoolClassId)">@schoolClass.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">Section</label>
+                <select class="form-select" name="sectionId">
+                    <option value="">@(Model.Sections.Count > 0 ? "-- Select section --" : "No section")</option>
+                    @foreach (var section in Model.Sections)
+                    {
+                        <option value="@section.Id" selected="@(section.Id == Model.SectionId)">@section.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <label class="form-label">Date</label>
+                <input class="form-control" type="date" name="attendanceDate" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <button class="btn btn-primary w-100" type="submit">Load Roster</button>
+            </div>
+        </form>
+        @if (Model.SchoolClassId > 0 && Model.Sections.Count > 0 && !Model.SectionId.HasValue)
+        {
+            <div class="form-text mt-2">After selecting a class, choose its section and click Load Roster again.</div>
+        }
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.AccessMessage))
+{
+    <div class="alert @(Model.CanEdit || Model.Students.Count == 0 ? "alert-info" : "alert-warning")">@Model.AccessMessage</div>
+}
+
+@if (Model.Students.Count > 0)
+{
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <div>
+            <strong>@Model.SelectedClassName</strong>
+            @if (!string.IsNullOrWhiteSpace(Model.SelectedSectionName))
+            {
+                <span> / @Model.SelectedSectionName</span>
+            }
+            <span class="text-muted">— @Model.AttendanceDate.ToString("dd MMM yyyy") — @Model.Students.Count students</span>
+        </div>
+        @if (Model.CanEdit)
+        {
+            <div class="d-flex gap-2">
+                <button type="button" id="markAllPresent" class="btn btn-sm btn-outline-success">Mark All Present</button>
+                <button type="button" id="markAllNoClass" class="btn btn-sm btn-outline-secondary">Mark All No Class</button>
+            </div>
+        }
+    </div>
+
+    <form method="post" asp-action="Save">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="AcademicSessionId" />
+        <input type="hidden" asp-for="SchoolClassId" />
+        <input type="hidden" asp-for="SectionId" />
+        <input type="hidden" asp-for="AttendanceDate" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
+
+        @if (Model.RequiresCorrectionReason)
+        {
+            <div class="alert alert-warning">
+                The normal teacher edit window has passed. This will be saved as an authorized late correction and recorded in the audit log.
+            </div>
+            <div class="mb-3">
+                <label asp-for="CorrectionReason" class="form-label fw-semibold">Correction Reason</label>
+                <textarea asp-for="CorrectionReason" class="form-control" rows="2" maxlength="500" required placeholder="Example: Teacher submitted wrong status; verified from class register."></textarea>
+            </div>
+        }
+
+        <div class="card shadow-sm border-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width:70px">#</th>
+                            <th>Student</th>
+                            <th>Admission / Roll</th>
+                            <th style="min-width:170px">Status</th>
+                            <th style="min-width:240px">Remarks</th>
+                            <th>Source</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @for (var i = 0; i < Model.Students.Count; i++)
+                    {
+                        <tr>
+                            <td>@(i + 1)</td>
+                            <td>
+                                <div class="fw-semibold">@Model.Students[i].StudentName</div>
+                                @if (Model.Students[i].AlreadySaved)
+                                {
+                                    <span class="badge text-bg-light border">Saved</span>
+                                }
+                                <input type="hidden" asp-for="Students[i].StudentId" />
+                                <input type="hidden" asp-for="Students[i].StudentEnrollmentId" />
+                                <input type="hidden" asp-for="Students[i].StudentName" />
+                            </td>
+                            <td>
+                                <div>@Model.Students[i].AdmissionNumber</div>
+                                <small class="text-muted">Roll: @(Model.Students[i].RollNumber ?? "-")</small>
+                            </td>
+                            <td>
+                                <select asp-for="Students[i].Status" asp-items="Html.GetEnumSelectList<StudentAttendanceStatus>()" class="form-select attendance-status" disabled="@(!Model.CanEdit)"></select>
+                                @if (!Model.CanEdit)
+                                {
+                                    <input type="hidden" asp-for="Students[i].Status" />
+                                }
+                            </td>
+                            <td>
+                                <input asp-for="Students[i].Remarks" class="form-control" maxlength="300" disabled="@(!Model.CanEdit)" placeholder="Optional" />
+                                @if (!Model.CanEdit)
+                                {
+                                    <input type="hidden" asp-for="Students[i].Remarks" />
+                                }
+                            </td>
+                            <td><span class="badge text-bg-secondary">@Model.Students[i].Source</span></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            @if (Model.CanEdit)
+            {
+                <div class="card-footer bg-white d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary px-4">Save Attendance</button>
+                </div>
+            }
+        </div>
+    </form>
+}
+else if (Model.SchoolClassId > 0 && (Model.Sections.Count == 0 || Model.SectionId.HasValue) && string.IsNullOrWhiteSpace(Model.AccessMessage))
+{
+    <div class="alert alert-info">No students are enrolled in this class/section for the selected date.</div>
+}
+
+@section Scripts {
+<script>
+    (() => {
+        const setAll = (value) => {
+            document.querySelectorAll('.attendance-status:not(:disabled)').forEach(x => x.value = value);
+        };
+        document.getElementById('markAllPresent')?.addEventListener('click', () => setAll('@((int)StudentAttendanceStatus.Present)'));
+        document.getElementById('markAllNoClass')?.addEventListener('click', () => setAll('@((int)StudentAttendanceStatus.NoClass)'));
+    })();
+</script>
+}

@@ -1,0 +1,10 @@
+@model School_Management_System.ViewModels.AcademicSessionFormViewModel
+@{
+    ViewData["Title"] = "Edit Academic Session";
+}
+<h2>Edit Academic Session</h2>
+@if (!string.IsNullOrWhiteSpace(Model.CurrentStatus))
+{
+    <p class="text-muted">Current status: <strong>@Model.CurrentStatus</strong>. Closed/Archived history is editable only by Principal/SuperAdmin as an authorized correction.</p>
+}
+<partial name="_SessionForm" model="Model" />

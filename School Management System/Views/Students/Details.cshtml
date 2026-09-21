@@ -1,0 +1,215 @@
+@model School_Management_System.ViewModels.StudentDetailsViewModel
+@{
+    ViewData["Title"] = "Student Profile";
+    var s = Model.Student;
+    var canEdit = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Receptionist);
+    var requestedTab = Context.Request.Query["tab"].ToString();
+    var activeTab = string.IsNullOrWhiteSpace(requestedTab) ? "overview" : requestedTab.ToLowerInvariant();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">@s.FullName</h1>
+        <div class="text-muted">@s.AdmissionNumber · @(Model.CurrentEnrollment?.ClassName ?? "Class not assigned")</div>
+    </div>
+    <div class="d-flex gap-2">
+        @if (canEdit)
+        {
+            <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@s.Id">Edit Profile</a>
+            <a class="btn btn-primary" asp-action="ChangePlacement" asp-route-id="@s.Id">Change Placement</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-auto text-center">
+                @if (!string.IsNullOrWhiteSpace(s.PhotoStorageKey))
+                {
+                    <img src="@Url.Action("Photo", "Students", new { id = s.Id })" alt="Student photo" class="rounded border" style="width:120px;height:120px;object-fit:cover" />
+                }
+                else
+                {
+                    <div class="rounded border bg-light d-flex align-items-center justify-content-center text-muted" style="width:120px;height:120px">No Photo</div>
+                }
+                @if (canEdit)
+                {
+                    <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="mt-2" style="max-width:220px">
+                        <input type="hidden" name="studentId" value="@s.Id" />
+                        <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-2" />
+                        <button class="btn btn-sm btn-outline-secondary w-100" type="submit">Update Photo</button>
+                    </form>
+                }
+            </div>
+            <div class="col">
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Status</small><span class="badge text-bg-@(s.Status == StudentStatus.Active ? "success" : "secondary")">@s.Status</span></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Roll Number</small><strong>@(Model.CurrentEnrollment?.RollNumber ?? s.RollNumber ?? "—")</strong></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Session</small><strong>@(Model.CurrentEnrollment?.AcademicSession.Name ?? "—")</strong></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Section</small><strong>@(Model.CurrentEnrollment?.SectionName ?? "—")</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link @(activeTab == "overview" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "fees" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#fees" type="button">Fees</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "attendance" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#attendance" type="button">Attendance</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "results" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#results" type="button">Results</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "documents" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#documents" type="button">Documents</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "history" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#history" type="button">History</button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade @(activeTab == "overview" ? "show active" : "")" id="overview">
+        <div class="row g-3">
+            <div class="col-lg-7">
+                <div class="card shadow-sm h-100"><div class="card-body">
+                    <h2 class="h5">Student Information</h2><hr />
+                    <div class="row g-3">
+                        <div class="col-md-6"><small class="text-muted d-block">Admission Number</small><strong>@s.AdmissionNumber</strong></div>
+                        <div class="col-md-6"><small class="text-muted d-block">Admission Date</small><strong>@s.AdmissionDate.ToString("dd MMM yyyy")</strong></div>
+                        <div class="col-md-6"><small class="text-muted d-block">Date of Birth</small><strong>@s.DateOfBirth.ToString("dd MMM yyyy")</strong></div>
+                        <div class="col-md-6"><small class="text-muted d-block">Gender</small><strong>@(s.Gender ?? "—")</strong></div>
+                        <div class="col-md-6"><small class="text-muted d-block">B-Form / CNIC</small><strong>@(s.BFormCnic ?? "—")</strong></div>
+                        <div class="col-md-6"><small class="text-muted d-block">Contact</small><strong>@(s.ContactNumber ?? "—")</strong></div>
+                        <div class="col-12"><small class="text-muted d-block">Address</small><strong>@(s.Address ?? "—")</strong></div>
+                    </div>
+                </div></div>
+            </div>
+            <div class="col-lg-5">
+                <div class="card shadow-sm h-100"><div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h2 class="h5 mb-0">Guardians</h2>
+                        @if (canEdit) { <a class="btn btn-sm btn-outline-primary" asp-action="AddGuardian" asp-route-id="@s.Id">+ Add</a> }
+                    </div><hr />
+                    @if (Model.Guardians.Count == 0)
+                    {
+                        <p class="text-muted mb-0">No guardian record found.</p>
+                    }
+                    else
+                    {
+                        @foreach (var link in Model.Guardians)
+                        {
+                            <div class="border rounded p-3 mb-2">
+                                <div class="d-flex justify-content-between gap-2">
+                                    <div><strong>@link.Guardian.FullName</strong> @if (link.IsPrimary) { <span class="badge text-bg-primary">Primary</span> }</div>
+                                    @if (canEdit) { <a asp-action="EditGuardian" asp-route-studentId="@s.Id" asp-route-guardianId="@link.GuardianId">Edit</a> }
+                                </div>
+                                <div class="small text-muted">@link.Guardian.Relationship · @link.Guardian.Phone</div>
+                                @if (!string.IsNullOrWhiteSpace(link.Guardian.Occupation)) { <div class="small">@link.Guardian.Occupation</div> }
+                            </div>
+                        }
+                    }
+                </div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "fees" ? "show active" : "")" id="fees">
+        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Fees</h2><p class="text-muted mb-0">The student fee ledger will connect here when M08 — Fees, Challans & Receipts is installed.</p></div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "attendance" ? "show active" : "")" id="attendance">
+        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Attendance</h2><p class="text-muted mb-0">Attendance percentage and daily records will connect here when M06 — Student Attendance is installed.</p></div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "results" ? "show active" : "")" id="results">
+        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Results</h2><p class="text-muted mb-0">Exam and result history will connect here after M09 and M10 are installed.</p></div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "documents" ? "show active" : "")" id="documents">
+        <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h5 mb-0">Student Documents</h2></div>
+            @if (canEdit)
+            {
+                <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="row g-2 align-items-end border rounded p-3 mb-3">
+                    <input type="hidden" name="StudentId" value="@s.Id" />
+                    <div class="col-md-4">
+                        <label class="form-label">Document Type</label>
+                        <select name="DocumentType" class="form-select" asp-items="Html.GetEnumSelectList<AdmissionDocumentType>()"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">File</label>
+                        <input type="file" name="File" accept=".pdf,.jpg,.jpeg,.png" class="form-control" required />
+                    </div>
+                    <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit">Upload</button></div>
+                    <div class="col-12"><small class="text-muted">PDF/JPG/PNG, maximum 5 MB. Files are kept outside wwwroot.</small></div>
+                </form>
+            }
+
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th>Size</th><th></th></tr></thead>
+                    <tbody>
+                    @if (Model.Documents.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">No documents uploaded.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var doc in Model.Documents)
+                        {
+                            <tr>
+                                <td>@doc.DocumentType</td>
+                                <td>@doc.OriginalFileName</td>
+                                <td>@doc.UploadedAtUtc.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td>@Math.Ceiling(doc.SizeBytes / 1024d) KB</td>
+                                <td class="text-end">
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="DownloadDocument" asp-route-id="@doc.Id">Download</a>
+                                    @if (canEdit)
+                                    {
+                                        <form asp-action="DeleteDocument" asp-route-id="@doc.Id" method="post" class="d-inline" onsubmit="return confirm('Remove this document from the student profile?');">
+                                            <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "history" ? "show active" : "")" id="history">
+        <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div><h2 class="h5 mb-1">Academic Placement History</h2><small class="text-muted">Old class/session records are preserved instead of overwritten.</small></div>
+                @if (canEdit) { <a class="btn btn-sm btn-primary" asp-action="ChangePlacement" asp-route-id="@s.Id">New Placement</a> }
+            </div>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead><tr><th>Session</th><th>Class</th><th>Section</th><th>Group</th><th>Roll</th><th>From</th><th>To</th><th>Status</th></tr></thead>
+                    <tbody>
+                    @if (Model.EnrollmentHistory.Count == 0)
+                    {
+                        <tr><td colspan="8" class="text-center text-muted py-4">No academic placement history yet. Use Change Placement to add the student's current class.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.EnrollmentHistory)
+                        {
+                            <tr class="@(item.IsCurrent ? "table-success" : "")">
+                                <td>@item.AcademicSession.Name</td>
+                                <td>@item.ClassName</td>
+                                <td>@(item.SectionName ?? "—")</td>
+                                <td>@(item.GroupStream ?? "—")</td>
+                                <td>@(item.RollNumber ?? "—")</td>
+                                <td>@item.EffectiveFrom.ToString("dd MMM yyyy")</td>
+                                <td>@(item.EffectiveTo?.ToString("dd MMM yyyy") ?? "Current")</td>
+                                <td>@item.Status @if (item.IsCurrent) { <span class="badge text-bg-success ms-1">Current</span> }</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div></div>
+    </div>
+</div>

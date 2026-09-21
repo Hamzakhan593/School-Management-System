@@ -1,0 +1,19 @@
+@using Microsoft.AspNetCore.Identity
+@using School_Management_System.Models
+@inject SignInManager<ApplicationUser> SignInManager
+@inject UserManager<ApplicationUser> UserManager
+
+@if (SignInManager.IsSignedIn(User))
+{
+    var currentUser = await UserManager.GetUserAsync(User);
+    <div class="d-flex align-items-center gap-2">
+        <span class="navbar-text d-none d-md-inline">@(currentUser?.FullName ?? User.Identity?.Name)</span>
+        <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+            <button type="submit" class="btn btn-sm btn-outline-light">Logout</button>
+        </form>
+    </div>
+}
+else
+{
+    <a asp-controller="Account" asp-action="Login" class="btn btn-sm btn-light">Login</a>
+}

@@ -1,0 +1,35 @@
+@model AdmissionEnquiry
+@{
+    ViewData["Title"] = "Enquiry Details";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div><h2 class="mb-1">@Model.StudentName</h2><p class="text-muted mb-0">Admission enquiry #@Model.Id</p></div>
+    <div class="d-flex gap-2">
+        <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+        @if (Model.Stage != AdmissionEnquiryStage.Admitted) { <a asp-action="EditEnquiry" asp-route-id="@Model.Id" class="btn btn-outline-primary">Edit</a> }
+        @if (Model.AdmissionApplication is not null)
+        {
+            <a asp-action="ApplicationDetails" asp-route-id="@Model.AdmissionApplication.Id" class="btn btn-primary">Open Admission Form</a>
+        }
+        else if (Model.Stage == AdmissionEnquiryStage.Approved)
+        {
+            <a asp-action="StartAdmission" asp-route-enquiryId="@Model.Id" class="btn btn-primary">Start Admission</a>
+        }
+    </div>
+</div>
+<div class="row g-3">
+    <div class="col-lg-8"><div class="card border-0 shadow-sm h-100"><div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-6"><div class="text-muted small">Parent / guardian</div><div class="fw-semibold">@Model.ParentGuardianName</div></div>
+            <div class="col-md-6"><div class="text-muted small">Contact</div><div>@Model.ContactNumber</div></div>
+            <div class="col-md-6"><div class="text-muted small">Email</div><div>@(Model.Email ?? "-")</div></div>
+            <div class="col-md-6"><div class="text-muted small">Desired class</div><div>@Model.DesiredClass</div></div>
+            <div class="col-md-6"><div class="text-muted small">Academic session</div><div>@(Model.AcademicSession?.Name ?? "Not selected")</div></div>
+            <div class="col-md-6"><div class="text-muted small">Source / referral</div><div>@(Model.SourceReferral ?? "-")</div></div>
+            <div class="col-md-6"><div class="text-muted small">Follow-up</div><div>@(Model.FollowUpDate?.ToString("dd MMM yyyy") ?? "-")</div></div>
+            <div class="col-md-6"><div class="text-muted small">Created</div><div>@Model.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</div></div>
+            <div class="col-12"><div class="text-muted small">Notes</div><div class="white-space-preline">@(Model.Notes ?? "-")</div></div>
+        </div>
+    </div></div></div>
+    <div class="col-lg-4"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Current stage</div><div class="fs-4 fw-semibold mb-2">@Model.Stage</div>@if (Model.Stage != AdmissionEnquiryStage.Approved && Model.AdmissionApplication is null) { <p class="small text-muted mb-0">Change the stage to <strong>Approved</strong> when the school accepts the enquiry. Then the admission form can be started.</p> }</div></div></div>
+</div>
