@@ -35,6 +35,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<TeacherAssignment> TeacherAssignments => Set<TeacherAssignment>();
     public DbSet<AcademicGroup> AcademicGroups => Set<AcademicGroup>();
     public DbSet<StudentAttendance> StudentAttendances => Set<StudentAttendance>();
+    public DbSet<BiometricDevice> BiometricDevices => Set<BiometricDevice>();
+    public DbSet<BiometricEnrollment> BiometricEnrollments => Set<BiometricEnrollment>();
+    public DbSet<CameraFaceEnrollment> CameraFaceEnrollments => Set<CameraFaceEnrollment>();
+    public DbSet<AttendanceEvent> AttendanceEvents => Set<AttendanceEvent>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -312,6 +316,80 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany()
                 .HasForeignKey(x => x.SectionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<BiometricDevice>(entity =>
+        {
+            entity.HasIndex(x => x.DeviceCode).IsUnique();
+            entity.HasIndex(x => new { x.SchoolId, x.IsActive });
+            entity.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<BiometricEnrollment>(entity =>
+        {
+            entity.HasIndex(x => new { x.BiometricDeviceId, x.DeviceUserReference }).IsUnique();
+            entity.HasIndex(x => new { x.SchoolId, x.StudentId, x.IsActive });
+            entity.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.BiometricDevice)
+                .WithMany(x => x.Enrollments)
+                .HasForeignKey(x => x.BiometricDeviceId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<CameraFaceEnrollment>(entity =>
+        {
+            entity.HasIndex(x => new { x.SchoolId, x.StudentId, x.ProviderName }).IsUnique();
+            entity.HasIndex(x => new { x.SchoolId, x.IsActive });
+            entity.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<AttendanceEvent>(entity =>
+        {
+            entity.Property(x => x.LocalDate).HasColumnType("date");
+            entity.Property(x => x.ConfidenceScore).HasPrecision(6, 5);
+            entity.HasIndex(x => new { x.BiometricDeviceId, x.ExternalEventId })
+                .IsUnique()
+                .HasFilter("[BiometricDeviceId] IS NOT NULL AND [ExternalEventId] IS NOT NULL");
+            entity.HasIndex(x => new { x.SchoolId, x.LocalDate, x.ProcessingStatus });
+            entity.HasIndex(x => new { x.SchoolId, x.StudentId, x.OccurredAtUtc });
+
+            entity.HasOne(x => x.School)
+                .WithMany()
+                .HasForeignKey(x => x.SchoolId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.Student)
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.StudentEnrollment)
+                .WithMany()
+                .HasForeignKey(x => x.StudentEnrollmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.StudentAttendance)
+                .WithMany()
+                .HasForeignKey(x => x.StudentAttendanceId)
+                .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(x => x.BiometricDevice)
+                .WithMany(x => x.AttendanceEvents)
+                .HasForeignKey(x => x.BiometricDeviceId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         builder.Entity<StudentEnrollment>(entity =>

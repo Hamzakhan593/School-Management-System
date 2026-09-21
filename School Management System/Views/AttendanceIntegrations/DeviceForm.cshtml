@@ -1,0 +1,36 @@
+@model School_Management_System.ViewModels.BiometricDeviceFormViewModel
+@{
+    var editing = Model.Id.HasValue;
+    var actionName = editing ? "EditDevice" : "CreateDevice";
+    ViewData["Title"] = editing ? "Edit Biometric Device" : "Add Biometric Device";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div><h1 class="h3 mb-1">@ViewData["Title"]</h1><p class="text-muted mb-0">Register the hardware endpoint used by the local attendance bridge.</p></div>
+            <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+        </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form asp-action="@actionName" method="post" class="row g-3">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="Id" type="hidden" />
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="col-md-6"><label asp-for="DeviceCode" class="form-label"></label><input asp-for="DeviceCode" class="form-control text-uppercase" placeholder="BIO-GATE-01" /><span asp-validation-for="DeviceCode" class="text-danger"></span><div class="form-text">Must be unique. The bridge includes this code with each event.</div></div>
+                    <div class="col-md-6"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" placeholder="Main Gate Fingerprint" /><span asp-validation-for="Name" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="Model" class="form-label"></label><input asp-for="Model" class="form-control" placeholder="Vendor / model" /></div>
+                    <div class="col-md-6"><label asp-for="ConnectionType" class="form-label"></label><input asp-for="ConnectionType" class="form-control" placeholder="LAN / USB / SDK" /></div>
+                    <div class="col-md-6"><label asp-for="IpAddress" class="form-label"></label><input asp-for="IpAddress" class="form-control" placeholder="192.168.1.50" /></div>
+                    <div class="col-md-6"><label asp-for="Location" class="form-label"></label><input asp-for="Location" class="form-control" placeholder="Main Gate" /></div>
+                    <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Device is active</label></div></div>
+                    <div class="col-12 d-flex justify-content-end gap-2"><a asp-action="Index" class="btn btn-outline-secondary">Cancel</a><button class="btn btn-primary" type="submit">@(editing ? "Save Changes" : "Create Device")</button></div>
+                </form>
+            </div>
+        </div>
+        @if (!editing)
+        {
+            <div class="alert alert-info mt-3 mb-0">After creation the system generates a strong device key and displays it once. Only its hash is stored in the database.</div>
+        }
+    </div>
+</div>

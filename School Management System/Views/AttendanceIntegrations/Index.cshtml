@@ -1,0 +1,181 @@
+@model School_Management_System.ViewModels.AttendanceIntegrationsIndexViewModel
+@{
+    ViewData["Title"] = "Attendance Devices & Integrations";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Attendance Devices & Integrations</h1>
+        <p class="text-muted mb-0">Biometric devices, student mappings, camera templates and integration event health.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary" asp-action="CreateDevice">Add Device</a>
+        <a class="btn btn-outline-primary" asp-action="CreateEnrollment">Map Biometric User</a>
+        <a class="btn btn-outline-secondary" asp-controller="CameraAttendance" asp-action="Enroll">Face Enrollment</a>
+        <a class="btn btn-outline-success" asp-controller="CameraAttendance" asp-action="Index">Camera Attendance</a>
+    </div>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.OneTimeDeviceKey))
+{
+    <div class="alert alert-warning shadow-sm">
+        <div class="fw-semibold mb-2">Copy this device integration key now — it will not be shown again.</div>
+        <div class="row g-2 align-items-center">
+            <div class="col-md-3"><label class="form-label small mb-1">Device Code</label><input class="form-control font-monospace" readonly value="@Model.OneTimeDeviceCode" /></div>
+            <div class="col-md-7"><label class="form-label small mb-1">X-Device-Key</label><input id="deviceKey" class="form-control font-monospace" readonly value="@Model.OneTimeDeviceKey" /></div>
+            <div class="col-md-2 d-grid"><button type="button" id="copyDeviceKey" class="btn btn-warning mt-md-4">Copy Key</button></div>
+        </div>
+        <div class="small mt-2">The local biometric bridge sends events to <code>/api/attendance/bridge/events</code> and places this key in the <code>X-Device-Key</code> header.</div>
+    </div>
+}
+
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong>Biometric Devices</strong>
+        <span class="badge text-bg-light border">@Model.Devices.Count device(s)</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Device</th><th>Connection</th><th>Location</th><th>Health</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+            @if (!Model.Devices.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">No biometric device configured yet.</td></tr>
+            }
+            @foreach (var device in Model.Devices)
+            {
+                <tr>
+                    <td><div class="fw-semibold">@device.Name</div><small class="text-muted font-monospace">@device.DeviceCode</small><br /><small>@device.Model</small></td>
+                    <td>@(string.IsNullOrWhiteSpace(device.ConnectionType) ? "-" : device.ConnectionType)<br /><small class="text-muted">@device.IpAddress</small></td>
+                    <td>@(device.Location ?? "-")</td>
+                    <td>
+                        <div>@(device.LastSyncAtUtc.HasValue ? device.LastSyncAtUtc.Value.ToString("dd MMM yyyy HH:mm 'UTC'") : "Never synced")</div>
+                        <small class="text-muted">@(device.LastStatusMessage ?? "No health message")</small>
+                    </td>
+                    <td><span class="badge @(device.IsActive ? "text-bg-success" : "text-bg-secondary")">@(device.IsActive ? "Active" : "Inactive")</span></td>
+                    <td class="text-end">
+                        <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                            <a class="btn btn-sm btn-outline-secondary" asp-action="EditDevice" asp-route-id="@device.Id">Edit</a>
+                            <a class="btn btn-sm btn-outline-primary" asp-action="CreateEnrollment" asp-route-deviceId="@device.Id">Map User</a>
+                            <form asp-action="RegenerateDeviceKey" method="post" onsubmit="return confirm('Regenerate this device key? The old key will stop working immediately.');">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@device.Id" />
+                                <button class="btn btn-sm btn-outline-warning" type="submit">New Key</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-xl-7">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center"><strong>Biometric Student Mappings</strong><a asp-action="CreateEnrollment" class="btn btn-sm btn-outline-primary">Add Mapping</a></div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light"><tr><th>Student</th><th>Device</th><th>User Ref</th><th>Mode</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                    @if (!Model.Enrollments.Any())
+                    {
+                        <tr><td colspan="6" class="text-center text-muted py-4">No biometric mappings yet.</td></tr>
+                    }
+                    @foreach (var item in Model.Enrollments)
+                    {
+                        <tr>
+                            <td><div class="fw-semibold">@item.Student.FullName</div><small class="text-muted">@item.Student.AdmissionNumber</small></td>
+                            <td>@item.BiometricDevice.Name</td>
+                            <td class="font-monospace">@item.DeviceUserReference</td>
+                            <td>@item.Modality</td>
+                            <td><span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                            <td class="text-end">
+                                <form asp-action="ToggleEnrollment" method="post">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="id" value="@item.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">@(item.IsActive ? "Disable" : "Enable")</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center"><strong>Camera Face Templates</strong><a asp-controller="CameraAttendance" asp-action="Enroll" class="btn btn-sm btn-outline-secondary">Enroll</a></div>
+            <div class="card-body">
+                @if (!Model.CameraEnrollments.Any())
+                {
+                    <div class="text-muted">No automated face-recognition template is registered. Camera attendance can still use the manual confirmation fallback.</div>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                    @foreach (var item in Model.CameraEnrollments)
+                    {
+                        <div class="list-group-item px-0 d-flex justify-content-between gap-2">
+                            <div><div class="fw-semibold">@item.Student.FullName</div><small class="text-muted">@item.ProviderName · @item.EnrolledAtUtc.ToString("dd MMM yyyy")</small></div>
+                            <span class="badge text-bg-success align-self-start">Active</span>
+                        </div>
+                    }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <strong>Recent Integration Events</strong>
+        <span class="text-muted small">Latest 50</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Time</th><th>Source</th><th>Student / Device Ref</th><th>Direction</th><th>Result</th><th>Details</th></tr></thead>
+            <tbody>
+            @if (!Model.RecentEvents.Any())
+            {
+                <tr><td colspan="6" class="text-center text-muted py-4">No integration events received yet.</td></tr>
+            }
+            @foreach (var item in Model.RecentEvents)
+            {
+                var badge = item.ProcessingStatus switch
+                {
+                    AttendanceEventProcessingStatus.AttendanceApplied => "text-bg-success",
+                    AttendanceEventProcessingStatus.Recorded => "text-bg-info",
+                    AttendanceEventProcessingStatus.Duplicate => "text-bg-secondary",
+                    AttendanceEventProcessingStatus.Unmatched => "text-bg-warning",
+                    AttendanceEventProcessingStatus.NeedsReview => "text-bg-warning",
+                    AttendanceEventProcessingStatus.Rejected => "text-bg-danger",
+                    _ => "text-bg-light"
+                };
+                <tr>
+                    <td><div>@item.LocalDate.ToString("dd MMM yyyy")</div><small class="text-muted">@item.OccurredAtUtc.ToString("HH:mm:ss 'UTC'")</small></td>
+                    <td>@item.Source<br /><small class="text-muted">@(item.BiometricDevice?.Name ?? "Web camera")</small></td>
+                    <td>@(item.Student?.FullName ?? "Unmatched")<br /><small class="text-muted font-monospace">@item.DeviceUserReference</small></td>
+                    <td>@item.Direction</td>
+                    <td><span class="badge @badge">@item.ProcessingStatus</span></td>
+                    <td class="small">@(item.ReviewReason ?? "-")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    document.getElementById('copyDeviceKey')?.addEventListener('click', async () => {
+        const input = document.getElementById('deviceKey');
+        if (!input) return;
+        await navigator.clipboard.writeText(input.value);
+        document.getElementById('copyDeviceKey').textContent = 'Copied';
+    });
+</script>
+}

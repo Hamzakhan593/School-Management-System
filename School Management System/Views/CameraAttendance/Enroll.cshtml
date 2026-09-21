@@ -1,0 +1,90 @@
+@model School_Management_System.ViewModels.CameraEnrollmentViewModel
+@{
+    ViewData["Title"] = "Camera Face Enrollment";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div><h1 class="h3 mb-1">Camera Face Enrollment</h1><p class="text-muted mb-0">Capture three clear samples and pass them to the configured recognition provider.</p></div>
+    <a class="btn btn-outline-secondary" asp-controller="AttendanceIntegrations" asp-action="Index">Back</a>
+</div>
+
+<div class="alert alert-info">M07 ships with a safe manual-only provider by default. Automated face enrollment will become active only after a school-approved recognition provider is connected. Raw samples are not stored by this application when enrollment fails or completes.</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <div class="ratio ratio-4x3 bg-dark rounded overflow-hidden mb-3"><video id="enrollVideo" autoplay playsinline muted class="w-100 h-100" style="object-fit:cover"></video></div>
+                <canvas id="enrollCanvas" class="d-none"></canvas>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="startCamera" class="btn btn-outline-primary">Start Camera</button>
+                    <button type="button" class="btn btn-primary capture-sample" data-sample="1" disabled>Capture Sample 1</button>
+                    <button type="button" class="btn btn-primary capture-sample" data-sample="2" disabled>Capture Sample 2</button>
+                    <button type="button" class="btn btn-primary capture-sample" data-sample="3" disabled>Capture Sample 3</button>
+                </div>
+                <div id="sampleStatus" class="small text-muted mt-2">Capture from slightly different natural angles with good lighting.</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <form asp-action="Enroll" method="post" id="enrollForm">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                    <div class="mb-3"><label asp-for="StudentId" class="form-label fw-semibold"></label><select asp-for="StudentId" asp-items="Model.Students" class="form-select"><option value="0">-- Select student --</option></select><span asp-validation-for="StudentId" class="text-danger"></span></div>
+                    <input asp-for="Sample1DataUrl" type="hidden" id="sample1" />
+                    <input asp-for="Sample2DataUrl" type="hidden" id="sample2" />
+                    <input asp-for="Sample3DataUrl" type="hidden" id="sample3" />
+                    <div class="row g-2 mb-3">
+                        <div class="col-4"><div class="border rounded p-2 text-center"><div class="small text-muted">Sample 1</div><span id="mark1" class="badge text-bg-secondary">Pending</span></div></div>
+                        <div class="col-4"><div class="border rounded p-2 text-center"><div class="small text-muted">Sample 2</div><span id="mark2" class="badge text-bg-secondary">Pending</span></div></div>
+                        <div class="col-4"><div class="border rounded p-2 text-center"><div class="small text-muted">Sample 3</div><span id="mark3" class="badge text-bg-secondary">Pending</span></div></div>
+                    </div>
+                    <button class="btn btn-primary w-100" type="submit">Send Samples to Recognition Provider</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const video = document.getElementById('enrollVideo');
+    const canvas = document.getElementById('enrollCanvas');
+    const start = document.getElementById('startCamera');
+    const buttons = document.querySelectorAll('.capture-sample');
+    const status = document.getElementById('sampleStatus');
+    let stream = null;
+
+    start.addEventListener('click', async () => {
+        try {
+            stream?.getTracks().forEach(t => t.stop());
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            video.srcObject = stream;
+            buttons.forEach(b => b.disabled = false);
+            status.textContent = 'Camera ready. Capture all three samples.';
+        } catch {
+            status.textContent = 'Camera permission denied or camera unavailable.';
+        }
+    });
+
+    buttons.forEach(button => button.addEventListener('click', () => {
+        if (!video.videoWidth) return;
+        const n = button.dataset.sample;
+        const maxWidth = 640;
+        const scale = Math.min(1, maxWidth / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        document.getElementById(`sample${n}`).value = canvas.toDataURL('image/jpeg', 0.82);
+        const mark = document.getElementById(`mark${n}`);
+        mark.textContent = 'Captured';
+        mark.className = 'badge text-bg-success';
+    }));
+
+    window.addEventListener('beforeunload', () => stream?.getTracks().forEach(t => t.stop()));
+})();
+</script>
+}

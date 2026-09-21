@@ -1,0 +1,27 @@
+@model School_Management_System.ViewModels.BiometricEnrollmentFormViewModel
+@{
+    ViewData["Title"] = "Map Biometric User";
+}
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div><h1 class="h3 mb-1">Map Biometric User</h1><p class="text-muted mb-0">Connect a device user/template reference to one student.</p></div>
+            <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+        </div>
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <form asp-action="CreateEnrollment" method="post" class="row g-3">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <div class="col-md-6"><label asp-for="BiometricDeviceId" class="form-label"></label><select asp-for="BiometricDeviceId" asp-items="Model.Devices" class="form-select"><option value="0">-- Select device --</option></select><span asp-validation-for="BiometricDeviceId" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="StudentId" class="form-label"></label><select asp-for="StudentId" asp-items="Model.Students" class="form-select"><option value="0">-- Select student --</option></select><span asp-validation-for="StudentId" class="text-danger"></span></div>
+                    <div class="col-md-6"><label asp-for="DeviceUserReference" class="form-label"></label><input asp-for="DeviceUserReference" class="form-control" placeholder="Example: 10025" /><span asp-validation-for="DeviceUserReference" class="text-danger"></span><div class="form-text">Use the exact user ID/reference sent by the biometric device.</div></div>
+                    <div class="col-md-6"><label asp-for="Modality" class="form-label"></label><select asp-for="Modality" asp-items="Html.GetEnumSelectList<BiometricModality>()" class="form-select"></select></div>
+                    <div class="col-12"><label asp-for="TemplateReference" class="form-label"></label><input asp-for="TemplateReference" class="form-control" placeholder="Optional device/provider template ID" /><div class="form-text">The School Management System stores only the reference. Keep the biometric template on the approved device/provider where possible.</div></div>
+                    <div class="col-12 d-flex justify-content-end gap-2"><a asp-action="Index" class="btn btn-outline-secondary">Cancel</a><button class="btn btn-primary" type="submit">Save Mapping</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

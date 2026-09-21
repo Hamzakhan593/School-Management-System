@@ -51,6 +51,9 @@ builder.Services.AddScoped<IStudentFileService, StudentFileService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
 builder.Services.Configure<AttendanceOptions>(builder.Configuration.GetSection("Attendance"));
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+builder.Services.Configure<AttendanceIntegrationOptions>(builder.Configuration.GetSection("AttendanceIntegrations"));
+builder.Services.AddScoped<IAttendanceIntegrationService, AttendanceIntegrationService>();
+builder.Services.AddScoped<ICameraRecognitionProvider, ManualOnlyCameraRecognitionProvider>();
 builder.Services.AddControllersWithViews();
 
 var app = builder.Build();

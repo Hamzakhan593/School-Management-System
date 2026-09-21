@@ -1,0 +1,122 @@
+@model School_Management_System.ViewModels.CameraAttendanceViewModel
+@{
+    ViewData["Title"] = "Camera Attendance";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Camera Attendance</h1>
+        <p class="text-muted mb-0">Capture one live frame. Automatic recognition is pluggable; manual confirmation remains available.</p>
+    </div>
+    @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+    {
+        <div class="d-flex gap-2"><a class="btn btn-outline-secondary" asp-action="Enroll">Face Enrollment</a><a class="btn btn-outline-primary" asp-controller="AttendanceIntegrations" asp-action="Index">Devices & Events</a></div>
+    }
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.ResultMessage))
+{
+    <div class="alert @(Model.ResultSuccess ? "alert-success" : "alert-warning")">@Model.ResultMessage</div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white"><strong>Live Camera</strong></div>
+            <div class="card-body">
+                <div class="ratio ratio-4x3 bg-dark rounded overflow-hidden mb-3">
+                    <video id="cameraVideo" autoplay playsinline muted class="w-100 h-100" style="object-fit:cover"></video>
+                </div>
+                <canvas id="cameraCanvas" class="d-none"></canvas>
+                <div class="d-flex flex-wrap gap-2">
+                    <button type="button" id="startCamera" class="btn btn-outline-primary">Start Camera</button>
+                    <button type="button" id="captureFrame" class="btn btn-primary" disabled>Capture Frame</button>
+                    <span id="cameraStatus" class="align-self-center text-muted small">Camera not started.</span>
+                </div>
+                <img id="previewImage" class="img-fluid rounded border mt-3 d-none" alt="Captured frame preview" />
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white"><strong>Confirm Attendance</strong></div>
+            <div class="card-body">
+                <form asp-action="Process" method="post" id="cameraAttendanceForm">
+                    @Html.AntiForgeryToken()
+                    <div asp-validation-summary="ModelOnly" class="text-danger mb-2"></div>
+                    <input asp-for="CapturedImageDataUrl" type="hidden" id="capturedImage" />
+                    <input asp-for="ClientDetectedFaceCount" type="hidden" id="detectedFaceCount" />
+
+                    <div class="mb-3">
+                        <label asp-for="ManualStudentId" class="form-label fw-semibold">Manual confirmation / fallback</label>
+                        <select asp-for="ManualStudentId" asp-items="Model.Students" class="form-select">
+                            <option value="">-- Let recognition match, or select student --</option>
+                        </select>
+                        <div class="form-text">If automatic recognition is unavailable, low-confidence, or needs review, select the student only after staff visually verifies the student.</div>
+                    </div>
+
+                    <div class="alert alert-light border small">
+                        <strong>Privacy:</strong> this module sends only the captured frame for immediate processing. The default provider does not retain the raw image. Daily attendance always has a manual alternative.
+                    </div>
+                    <button type="submit" class="btn btn-success w-100" id="processButton" disabled>Process Attendance</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(() => {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const preview = document.getElementById('previewImage');
+    const start = document.getElementById('startCamera');
+    const capture = document.getElementById('captureFrame');
+    const status = document.getElementById('cameraStatus');
+    const imageInput = document.getElementById('capturedImage');
+    const faceCountInput = document.getElementById('detectedFaceCount');
+    const process = document.getElementById('processButton');
+    let stream = null;
+
+    start.addEventListener('click', async () => {
+        try {
+            stream?.getTracks().forEach(t => t.stop());
+            stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+            video.srcObject = stream;
+            capture.disabled = false;
+            status.textContent = 'Camera ready.';
+        } catch (e) {
+            status.textContent = 'Camera permission denied or camera unavailable.';
+        }
+    });
+
+    capture.addEventListener('click', async () => {
+        if (!video.videoWidth) return;
+        const maxWidth = 640;
+        const scale = Math.min(1, maxWidth / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        imageInput.value = dataUrl;
+        preview.src = dataUrl;
+        preview.classList.remove('d-none');
+        process.disabled = false;
+        status.textContent = 'Frame captured. Ready to process.';
+
+        faceCountInput.value = '';
+        if ('FaceDetector' in window) {
+            try {
+                const detector = new FaceDetector({ fastMode: true, maxDetectedFaces: 5 });
+                const faces = await detector.detect(canvas);
+                faceCountInput.value = faces.length;
+                status.textContent = `Frame captured. Browser detected ${faces.length} face(s) for review.`;
+            } catch { }
+        }
+    });
+
+    window.addEventListener('beforeunload', () => stream?.getTracks().forEach(t => t.stop()));
+})();
+</script>
+}
