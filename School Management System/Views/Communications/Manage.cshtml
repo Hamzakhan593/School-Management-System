@@ -1,0 +1,116 @@
+@model School_Management_System.ViewModels.CommunicationManageViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Manage Communications";
+}
+
+<section class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">Administration</div>
+        <h1>Documents, Notices & Communication</h1>
+        <p>Create school notices, publish circulars, manage downloads and keep a communication history.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary sms-btn" asp-action="Index">Public View</a>
+        <a class="btn btn-outline-primary sms-btn" asp-action="CreateDocument">Upload Document</a>
+        <a class="btn btn-primary sms-btn" asp-action="CreateNotice">New Notice</a>
+    </div>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Published notices</div><div class="display-6 fw-bold">@Model.PublishedNoticeCount</div><div class="text-muted">Visible on the built-in notice board.</div></div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Active documents</div><div class="display-6 fw-bold">@Model.ActiveDocumentCount</div><div class="text-muted">Controlled school downloads currently available.</div></div></div></div>
+    <div class="col-md-4"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Provider setup needed</div><div class="display-6 fw-bold">@Model.ExternalNotConfiguredCount</div><div class="text-muted">SMS/WhatsApp/email attempts waiting for future provider configuration.</div></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Notices</h2><p class="text-muted mb-0">Draft, publish, unpublish, dispatch or archive without deleting history.</p></div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Notice</th><th>Audience</th><th>Visibility</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Notices)
+            {
+                var status = item.IsArchived ? "Archived" : item.IsPublished ? "Published" : "Draft";
+                var badge = item.IsArchived ? "bg-secondary" : item.IsPublished ? "bg-success" : "bg-warning text-dark";
+                <tr>
+                    <td><div class="fw-semibold">@item.Title</div><div class="small text-muted">Created @item.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy")</div></td>
+                    <td>@item.Audience @if(item.Audience == NoticeAudience.Class){<span class="text-muted small">(@item.SchoolClass?.Name @(item.Section is null ? "" : "- " + item.Section.Name))</span>}</td>
+                    <td class="small">@(item.PublishFromUtc?.ToLocalTime().ToString("dd MMM yyyy") ?? "Immediate") → @(item.PublishUntilUtc?.ToLocalTime().ToString("dd MMM yyyy") ?? "No expiry")</td>
+                    <td><span class="badge @badge">@status</span></td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="EditNotice" asp-route-id="@item.Id">Edit</a>
+                        @if (!item.IsArchived)
+                        {
+                            <form asp-action="PublishNotice" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="id" value="@item.Id" />
+                                <input type="hidden" name="publish" value="@(!item.IsPublished)" />
+                                <button class="btn btn-sm btn-outline-secondary">@(item.IsPublished ? "Unpublish" : "Publish")</button>
+                            </form>
+                            <a class="btn btn-sm btn-outline-success" asp-action="Dispatch" asp-route-id="@item.Id">Dispatch</a>
+                            <form asp-action="ArchiveNotice" method="post" class="d-inline" onsubmit="return confirm('Archive this notice? It will disappear from the notice board but history will remain.');">
+                                @Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-danger">Archive</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Notices.Any()) { <tr><td colspan="5" class="text-center text-muted py-5">No notices yet.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">School Documents</h2><p class="text-muted mb-0">Fee policies, exam timetables, circulars, forms and other controlled files.</p></div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Document</th><th>Category</th><th>Audience</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.Documents)
+            {
+                <tr>
+                    <td><div class="fw-semibold">@item.Title</div><div class="small text-muted">@item.OriginalFileName</div></td>
+                    <td>@item.Category</td>
+                    <td>@item.Audience</td>
+                    <td><span class="badge @(item.IsActive ? "bg-success" : "bg-secondary")">@(item.IsActive ? "Active" : "Hidden")</span></td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-primary" asp-action="EditDocument" asp-route-id="@item.Id">Edit</a>
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="DownloadDocument" asp-route-id="@item.Id">Download</a>
+                        <form asp-action="SetDocumentActive" method="post" class="d-inline">
+                            @Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><input type="hidden" name="active" value="@(!item.IsActive)" /><button class="btn btn-sm btn-outline-warning">@(item.IsActive ? "Hide" : "Activate")</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (!Model.Documents.Any()) { <tr><td colspan="5" class="text-center text-muted py-5">No documents uploaded yet.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Communication History</h2><p class="text-muted mb-0">What was attempted, through which channel, and whether a provider was available.</p></div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Date</th><th>Notice</th><th>Channel</th><th>Audience</th><th>Recipients</th><th>Status</th><th>Detail</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.History)
+            {
+                var badge = item.Status == CommunicationDeliveryStatus.Sent ? "bg-success" : item.Status == CommunicationDeliveryStatus.NotConfigured ? "bg-warning text-dark" : "bg-secondary";
+                <tr>
+                    <td class="small">@item.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</td>
+                    <td>@(item.Notice?.Title ?? item.Subject ?? "Communication")</td>
+                    <td>@item.Channel</td>
+                    <td>@item.Audience</td>
+                    <td>@item.RecipientCount</td>
+                    <td><span class="badge @badge">@item.Status</span></td>
+                    <td class="small text-muted" style="max-width:360px">@item.StatusDetail</td>
+                </tr>
+            }
+            @if (!Model.History.Any()) { <tr><td colspan="7" class="text-center text-muted py-5">No communication history yet.</td></tr> }
+            </tbody>
+        </table>
+    </div>
+</div>

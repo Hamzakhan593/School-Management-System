@@ -1,0 +1,22 @@
+@model School_Management_System.ViewModels.FeeHeadsViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Fee Heads";
+}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-1">Fee Heads</h2><div class="text-muted">Tuition, admission, exam, lab, transport and custom fee types.</div></div><a class="btn btn-outline-secondary" asp-action="Index">Back to Fees</a></div>
+<div class="row g-4">
+    <div class="col-lg-4"><div class="card border-0 shadow-sm"><div class="card-body"><h3 class="h5">@(Model.Form.Id.HasValue ? "Edit Fee Head" : "Add Fee Head")</h3>
+        <form asp-action="SaveFeeHead" method="post">@Html.AntiForgeryToken()<input type="hidden" name="Id" value="@Model.Form.Id" />
+            <div class="mb-3"><label class="form-label">Code</label><input class="form-control" name="Code" value="@Model.Form.Code" placeholder="TUITION" /></div>
+            <div class="mb-3"><label class="form-label">Name</label><input class="form-control" name="Name" value="@Model.Form.Name" placeholder="Tuition Fee" /></div>
+            <div class="mb-3"><label class="form-label">Default Frequency</label><select class="form-select" name="DefaultFrequency">@foreach(var f in Enum.GetValues<FeeFrequency>()){<option value="@((int)f)" selected="@(f==Model.Form.DefaultFrequency)">@f</option>}</select></div>
+            <div class="mb-3"><label class="form-label">Default Amount</label><input class="form-control" type="number" step="0.01" name="DefaultAmount" value="@Model.Form.DefaultAmount" /></div>
+            <div class="mb-3"><label class="form-label">Sort Order</label><input class="form-control" type="number" name="SortOrder" value="@Model.Form.SortOrder" /></div>
+            <div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@Model.Form.IsActive" /><label class="form-check-label">Active</label></div>
+            <button class="btn btn-primary" type="submit">Save Fee Head</button> @if (Model.Form.Id.HasValue) { <a class="btn btn-link" asp-action="FeeHeads">Cancel</a> }
+        </form></div></div></div>
+    <div class="col-lg-8"><div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Code</th><th>Name</th><th>Frequency</th><th>Default</th><th>Status</th><th></th></tr></thead><tbody>
+    @if (Model.Heads.Count == 0) { <tr><td colspan="6" class="text-center text-muted py-4">No fee heads created.</td></tr> }
+    @foreach (var x in Model.Heads) { <tr><td><code>@x.Code</code></td><td>@x.Name</td><td>@x.DefaultFrequency</td><td>PKR @x.DefaultAmount.ToString("N2")</td><td>@(x.IsActive ? "Active" : "Inactive")</td><td><a class="btn btn-sm btn-outline-primary" asp-action="FeeHeads" asp-route-editId="@x.Id">Edit</a></td></tr> }
+    </tbody></table></div></div></div>
+</div>

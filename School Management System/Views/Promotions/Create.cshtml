@@ -1,0 +1,99 @@
+@model School_Management_System.ViewModels.RolloverCreateViewModel
+@{
+    ViewData["Title"] = "Create Session Rollover";
+    var createUrl = Url.Action("Create", "Promotions");
+}
+
+<section class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">Step 1 of 3</div>
+        <h1>Create Next Academic Session</h1>
+        <p>The new session stays Draft until student decisions are reviewed and the rollover is finalized.</p>
+    </div>
+    <a class="btn btn-outline-secondary sms-btn" asp-action="Index">Back</a>
+</section>
+
+<form asp-action="Create" method="post">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="row g-4">
+        <div class="col-xl-7">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Session details</h2><p class="text-muted mb-0">Choose the source year and define the next school year.</p></div>
+                <div class="card-body px-4 pb-4">
+                    <div class="mb-3">
+                        <label asp-for="SourceAcademicSessionId" class="form-label fw-semibold"></label>
+                        <select asp-for="SourceAcademicSessionId" class="form-select" id="sourceSession" onchange="window.location.href='@createUrl?sourceSessionId='+this.value">
+                            @foreach (var session in Model.SourceSessions)
+                            {
+                                <option value="@session.Id">@session.Name (@session.Status)</option>
+                            }
+                        </select>
+                        <div class="form-text">Changing the source reloads teacher-assignment choices after submit/reopen. Start from the active session in normal year-end use.</div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label asp-for="TargetSessionName" class="form-label fw-semibold"></label><input asp-for="TargetSessionName" class="form-control" /><span asp-validation-for="TargetSessionName" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="WorkingDaysPerWeek" class="form-label fw-semibold"></label><input asp-for="WorkingDaysPerWeek" class="form-control" /><span asp-validation-for="WorkingDaysPerWeek" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="TargetStartDate" class="form-label fw-semibold"></label><input asp-for="TargetStartDate" class="form-control" /><span asp-validation-for="TargetStartDate" class="text-danger"></span></div>
+                        <div class="col-md-6"><label asp-for="TargetEndDate" class="form-label fw-semibold"></label><input asp-for="TargetEndDate" class="form-control" /><span asp-validation-for="TargetEndDate" class="text-danger"></span></div>
+                    </div>
+                    <div class="mt-3"><label asp-for="Notes" class="form-label fw-semibold"></label><textarea asp-for="Notes" rows="3" class="form-control" placeholder="Optional year-end notes"></textarea><span asp-validation-for="Notes" class="text-danger"></span></div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Teacher assignments to carry forward</h2><p class="text-muted mb-0">Select only assignments you want in the next session. You can edit them later in Classes & Subjects.</p></div>
+                <div class="card-body px-4 pb-4">
+                    @if (Model.TeacherAssignments.Any())
+                    {
+                        <div class="row g-2">
+                        @foreach (var item in Model.TeacherAssignments)
+                        {
+                            var isChecked = Model.SelectedTeacherAssignmentIds.Contains(item.Id);
+                            <div class="col-12 col-lg-6">
+                                <label class="border rounded-3 p-3 w-100 d-flex gap-3 align-items-start bg-light-subtle">
+                                    <input class="form-check-input mt-1" type="checkbox" name="SelectedTeacherAssignmentIds" value="@item.Id" checked="@(isChecked ? "checked" : null)" />
+                                    <span><strong>@item.TeacherName</strong><br /><span class="text-muted small">@item.ClassName@(string.IsNullOrWhiteSpace(item.SectionName) ? "" : $" · {item.SectionName}") · @item.SubjectName</span></span>
+                                </label>
+                            </div>
+                        }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-muted">No active teacher assignments were found in the selected source session.</div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Reusable setup</h2><p class="text-muted mb-0">School-wide Class/Section/Subject masters are reused; session-specific mappings are copied.</p></div>
+                <div class="card-body px-4 pb-4">
+                    <div class="form-check form-switch mb-3">
+                        <input asp-for="CopyClassSubjects" class="form-check-input" />
+                        <label asp-for="CopyClassSubjects" class="form-check-label fw-semibold">Copy class-subject mappings</label>
+                        <div class="form-text">Copies max/pass marks and subject availability into the next session.</div>
+                    </div>
+                    <div class="form-check form-switch">
+                        <input asp-for="CopyFeeStructures" class="form-check-input" />
+                        <label asp-for="CopyFeeStructures" class="form-check-label fw-semibold">Copy fee structures</label>
+                        <div class="form-text">Carries active fee structures forward. Term references are mapped to copied terms.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info border-0 shadow-sm">
+                <strong>Safe rollover design</strong><br />
+                Terms and grading schemes are copied as supporting session setup. Student records are not changed on this page. The next screen is a preview where every Promote / Repeat / Hold / Graduate / Transfer Out decision can be reviewed.
+            </div>
+            <button class="btn btn-primary btn-lg w-100" type="submit">Create Session & Prepare Preview</button>
+        </div>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

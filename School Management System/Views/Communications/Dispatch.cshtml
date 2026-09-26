@@ -1,0 +1,31 @@
+@model School_Management_System.ViewModels.CommunicationDispatchViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Dispatch Notice";
+}
+
+<section class="sms-page-head"><div><div class="sms-eyebrow">Provider-agnostic communication</div><h1>Dispatch Notice</h1><p>Publish in-app immediately or record an external delivery attempt for future provider integration.</p></div><a class="btn btn-outline-secondary sms-btn" asp-action="Manage">Back</a></section>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm"><div class="card-body p-4 p-lg-5">
+            <form asp-action="Dispatch" method="post">
+                @Html.AntiForgeryToken()<input asp-for="NoticeId" type="hidden" /><input asp-for="NoticeTitle" type="hidden" /><input asp-for="Audience" type="hidden" /><input asp-for="AudienceLabel" type="hidden" />
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+                <div class="mb-3"><label class="form-label fw-semibold">Notice</label><div class="form-control bg-light">@Model.NoticeTitle</div></div>
+                <div class="mb-3"><label class="form-label fw-semibold">Audience</label><div class="form-control bg-light">@Model.AudienceLabel</div></div>
+                <div class="mb-3"><label asp-for="Channel" class="form-label fw-semibold"></label><select asp-for="Channel" asp-items="Html.GetEnumSelectList<CommunicationChannel>()" class="form-select"></select></div>
+                <div class="mb-3"><label asp-for="Subject" class="form-label fw-semibold"></label><input asp-for="Subject" class="form-control" /></div>
+                <div class="mb-3"><label asp-for="Message" class="form-label fw-semibold"></label><textarea asp-for="Message" rows="8" class="form-control"></textarea><span asp-validation-for="Message" class="text-danger"></span></div>
+                <button class="btn btn-primary">Dispatch / Record Attempt</button>
+            </form>
+        </div></div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm"><div class="card-body p-4">
+            <h2 class="h6">How delivery works</h2>
+            <p class="small text-muted mb-2"><strong>In-App</strong> uses the built-in notice board and works immediately.</p>
+            <p class="small text-muted mb-0"><strong>Email, SMS and WhatsApp</strong> are intentionally provider-agnostic. Until an approved provider is configured, the attempt is logged as <em>NotConfigured</em> instead of pretending that a real message was sent.</p>
+        </div></div>
+    </div>
+</div>

@@ -1,0 +1,36 @@
+@model School_Management_System.ViewModels.SchoolDocumentFormViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Edit School Document" : "Upload School Document";
+}
+
+<section class="sms-page-head">
+    <div><div class="sms-eyebrow">Controlled documents</div><h1>@ViewData["Title"]</h1><p>Publish fee policies, timetables, circulars, forms and other school documents.</p></div>
+    <a class="btn btn-outline-secondary sms-btn" asp-action="Manage">Back</a>
+</section>
+
+<div class="card border-0 shadow-sm"><div class="card-body p-4 p-lg-5">
+<form asp-action="SaveDocument" method="post" enctype="multipart/form-data" novalidate>
+    @Html.AntiForgeryToken()<input asp-for="Id" type="hidden" /><input asp-for="RowVersion" type="hidden" />
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <div class="row g-3">
+        <div class="col-md-8"><label asp-for="Title" class="form-label fw-semibold"></label><input asp-for="Title" class="form-control" /><span asp-validation-for="Title" class="text-danger"></span></div>
+        <div class="col-md-4"><label asp-for="Category" class="form-label fw-semibold"></label><select asp-for="Category" asp-items="Html.GetEnumSelectList<SchoolDocumentCategory>()" class="form-select"></select></div>
+        <div class="col-12"><label asp-for="Description" class="form-label fw-semibold"></label><textarea asp-for="Description" class="form-control" rows="3"></textarea></div>
+        <div class="col-md-4"><label asp-for="Audience" class="form-label fw-semibold"></label><select asp-for="Audience" asp-items="Html.GetEnumSelectList<NoticeAudience>()" class="form-select" id="audienceSelect"></select></div>
+        <div class="col-md-4 class-target"><label asp-for="SchoolClassId" class="form-label fw-semibold">Class</label><select asp-for="SchoolClassId" class="form-select" id="classSelect"><option value="">Select class</option>@foreach(var x in Model.Classes){<option value="@x.Id">@x.Name</option>}</select></div>
+        <div class="col-md-4 class-target"><label asp-for="SectionId" class="form-label fw-semibold">Section (optional)</label><select asp-for="SectionId" class="form-select" id="sectionSelect"><option value="">All sections</option>@foreach(var x in Model.Sections){<option value="@x.Id" data-class="@x.ParentId">@x.Name</option>}</select></div>
+        <div class="col-md-6"><label asp-for="EffectiveFromLocal" class="form-label fw-semibold"></label><input asp-for="EffectiveFromLocal" type="datetime-local" class="form-control" /></div>
+        <div class="col-md-6"><label asp-for="EffectiveUntilLocal" class="form-label fw-semibold"></label><input asp-for="EffectiveUntilLocal" type="datetime-local" class="form-control" /></div>
+        <div class="col-12"><label asp-for="File" class="form-label fw-semibold"></label><input asp-for="File" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" /><span asp-validation-for="File" class="text-danger"></span><div class="form-text">@(string.IsNullOrWhiteSpace(Model.ExistingFileName) ? "Select a file. Maximum 10 MB." : "Current file: " + Model.ExistingFileName + ". Choose another file only to replace it.")</div></div>
+        <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Active and available for download</label></div></div>
+    </div>
+    <div class="d-flex justify-content-end gap-2 mt-4"><a class="btn btn-outline-secondary" asp-action="Manage">Cancel</a><button class="btn btn-primary px-4">Save Document</button></div>
+</form>
+</div></div>
+
+@section Scripts {
+<script>
+(function(){ const a=document.getElementById('audienceSelect'),c=document.getElementById('classSelect'),s=document.getElementById('sectionSelect'),b=[...document.querySelectorAll('.class-target')]; function f(){const v=c.value;[...s.options].forEach((o,i)=>{if(i)o.hidden=!!v&&o.dataset.class!==v;});if(s.selectedOptions[0]?.hidden)s.value='';} function t(){const on=a.value==='4';b.forEach(x=>x.style.display=on?'':'none');if(!on){c.value='';s.value='';}f();} a.addEventListener('change',t);c.addEventListener('change',f);t();})();
+</script>
+}

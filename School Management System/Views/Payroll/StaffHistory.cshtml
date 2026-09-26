@@ -1,0 +1,21 @@
+@model School_Management_System.ViewModels.StaffPayrollHistoryViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Salary History";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Salary History</h1><p class="text-muted mb-0"><strong>@Model.Staff.FullName</strong> · @Model.Staff.EmployeeId · @Model.Staff.Designation</p></div>
+    <div class="d-flex gap-2"><a class="btn btn-outline-primary" asp-action="SalaryStructure" asp-route-staffId="@Model.Staff.Id">Salary Setup</a><a class="btn btn-outline-secondary" asp-action="Index">Payroll</a></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Current Basic Salary</div><div class="h3">PKR @(Model.SalaryStructure?.BasicSalary.ToString("N2") ?? "0.00")</div><div class="small text-muted">Structure: @(Model.SalaryStructure?.Name ?? "Not configured")</div></div></div></div>
+    <div class="col-md-6"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Outstanding Advances / Loans</div><div class="h3">PKR @Model.Advances.Where(x=>x.Status==StaffAdvanceStatus.Active).Sum(x=>x.OutstandingBalance).ToString("N2")</div></div></div></div>
+</div>
+
+<div class="card shadow-sm mb-4"><div class="card-header fw-semibold">Posted Salary History</div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Period</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Payment</th><th></th></tr></thead><tbody>
+@if(Model.PayrollItems.Count==0){<tr><td colspan="6" class="text-center text-muted py-4">No posted payroll history.</td></tr>}
+else{@foreach(var item in Model.PayrollItems){<tr><td>@(new DateTime(item.PayrollRun.PeriodYear,item.PayrollRun.PeriodMonth,1).ToString("MMMM yyyy"))</td><td>PKR @item.GrossPay.ToString("N2")</td><td>PKR @item.TotalDeductions.ToString("N2")</td><td><strong>PKR @item.NetPay.ToString("N2")</strong></td><td>@item.PayrollRun.PaymentMethod<div class="small text-muted">@item.PayrollRun.PaymentReference</div></td><td><a class="btn btn-sm btn-outline-success" asp-action="Payslip" asp-route-itemId="@item.Id">Payslip</a></td></tr>}}
+</tbody></table></div></div>
+
+<div class="card shadow-sm"><div class="card-header fw-semibold">Advance / Loan History</div><div class="table-responsive"><table class="table mb-0"><thead class="table-light"><tr><th>Type</th><th>Description</th><th>Original</th><th>Balance</th><th>Installment</th><th>Status</th></tr></thead><tbody>@if(Model.Advances.Count==0){<tr><td colspan="6" class="text-center text-muted py-4">No advances or loans.</td></tr>}else{@foreach(var a in Model.Advances){<tr><td>@a.Type</td><td>@a.Description</td><td>PKR @a.OriginalAmount.ToString("N2")</td><td>PKR @a.OutstandingBalance.ToString("N2")</td><td>PKR @a.MonthlyInstallment.ToString("N2")</td><td>@a.Status</td></tr>}}</tbody></table></div></div>

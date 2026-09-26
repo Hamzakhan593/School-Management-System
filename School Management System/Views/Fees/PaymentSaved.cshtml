@@ -1,0 +1,7 @@
+@model School_Management_System.Models.FeePayment
+@{ ViewData["Title"] = "Payment Saved"; }
+<div class="row justify-content-center"><div class="col-lg-8"><section class="card"><div class="card-body p-lg-5">
+<span class="badge text-bg-success mb-3">@(Model.IsReversed ? "Payment reversed" : "Payment saved")</span><h1 class="h3">@(Model.IsReversed ? "This receipt was reversed" : "Fee collected successfully")</h1><p class="text-muted">@Model.Student.FullName · @Model.Student.AdmissionNumber</p>
+<div class="workspace-summary my-4"><dl><div><dt>Receipt number</dt><dd>@Model.ReceiptNumber</dd></div><div><dt>Amount received</dt><dd>PKR @Model.Amount.ToString("N2")</dd></div><div><dt>Payment method</dt><dd>@Model.PaymentMethod</dd></div><div><dt>Payment date</dt><dd>@Model.PaymentDateUtc.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</dd></div><div><dt>Current remaining balance</dt><dd>PKR @(((decimal)ViewBag.Outstanding).ToString("N2"))</dd></div></dl></div>
+<div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" asp-action="ReceiptPdf" asp-route-id="@Model.Id" target="_blank" rel="noopener">Print Receipt</a><a class="btn btn-outline-primary" asp-action="Ledger" asp-route-studentId="@Model.StudentId">View Student Fees</a><a class="btn btn-outline-secondary" asp-action="Index">Collect Another Fee</a></div><p class="form-text mt-3">Print Receipt opens the PDF in a new tab. Use the PDF viewer's print control.</p>
+</div></section></div></div>

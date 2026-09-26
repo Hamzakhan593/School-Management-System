@@ -1,0 +1,182 @@
+@model School_Management_System.ViewModels.PromotionPreviewViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Promotion Preview";
+    var editable = Model.BatchStatus == PromotionBatchStatus.PreviewReady;
+    var committed = Model.BatchStatus == PromotionBatchStatus.Completed;
+    var finalized = Model.BatchStatus == PromotionBatchStatus.Finalized;
+    var rolledBack = Model.BatchStatus == PromotionBatchStatus.RolledBack;
+}
+
+<section class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">Annual rollover · @Model.BatchStatus</div>
+        <h1>@Model.SourceSessionName → @Model.TargetSessionName</h1>
+        <p>Review all student decisions before changing enrollment history. Finalization archives the old session and activates the new one.</p>
+    </div>
+    <a class="btn btn-outline-secondary sms-btn" asp-action="Index">Rollover History</a>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Students</div><div class="h3 mb-0">@Model.TotalStudents</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Promote</div><div class="h3 mb-0 text-success">@Model.PromoteCount</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Repeat</div><div class="h3 mb-0 text-warning">@Model.RepeatCount</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Hold</div><div class="h3 mb-0 text-danger">@Model.HoldCount</div></div></div></div>
+    <div class="col-6 col-lg"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Graduate / Transfer</div><div class="h3 mb-0">@(Model.GraduateCount + Model.TransferOutCount)</div></div></div></div>
+</div>
+
+@if (rolledBack)
+{
+    <div class="alert alert-secondary">This batch was rolled back safely. Rebuild the preview to review and commit again.</div>
+    <form asp-action="Prepare" asp-route-id="@Model.BatchId" method="post" class="mb-4">@Html.AntiForgeryToken()<button class="btn btn-primary">Rebuild Promotion Preview</button></form>
+}
+else if (finalized)
+{
+    <div class="alert alert-success"><strong>Rollover finalized.</strong> The target session is active and the source session remains available as archived history.</div>
+}
+else if (committed)
+{
+    <div class="alert @(Model.HoldCount == 0 ? "alert-primary" : "alert-warning")">
+        Student changes are committed transactionally. @(Model.HoldCount == 0 ? "The rollover can now be finalized." : $"{Model.HoldCount} student(s) were carried into the new session with Held status and can be resolved later through Student placement.")
+    </div>
+}
+
+@if (!rolledBack && Model.Items.Any())
+{
+<form asp-action="SavePreview" method="post" id="previewForm">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="BatchId" value="@Model.BatchId" />
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-4 px-4 d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <div><h2 class="h5 mb-1">Student promotion review</h2><p class="text-muted mb-0">Latest published result is guidance only; authorized staff can make the final decision.</p></div>
+            @if (editable)
+            {
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-success btn-sm" onclick="setAll('Promote')">All Promote</button>
+                    <button type="button" class="btn btn-outline-warning btn-sm" onclick="setAll('Repeat')">All Repeat</button>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setAll('Hold')">All Hold</button>
+                </div>
+            }
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" style="min-width:1180px">
+                <thead class="table-light">
+                    <tr><th>Student</th><th>Current placement</th><th>Latest result</th><th>Suggested</th><th style="width:150px">Decision</th><th style="width:180px">Target class</th><th style="width:210px">Target section</th><th style="width:200px">Review note</th></tr>
+                </thead>
+                <tbody>
+                @for (var i = 0; i < Model.Items.Count; i++)
+                {
+                    var item = Model.Items[i];
+                    <tr>
+                        <td>
+                            <input type="hidden" name="Items[@i].PromotionItemId" value="@item.PromotionItemId" />
+                            <div class="fw-semibold">@item.StudentName</div><div class="text-muted small">@item.AdmissionNumber@(string.IsNullOrWhiteSpace(item.RollNumber) ? "" : $" · Roll {item.RollNumber}")</div>
+                        </td>
+                        <td><div class="fw-semibold">@item.SourceClass</div><div class="text-muted small">@(item.SourceSection ?? "No section")</div></td>
+                        <td>
+                            @if (item.LatestResultPassed.HasValue)
+                            {
+                                <span class="badge @(item.LatestResultPassed.Value ? "bg-success" : "bg-danger")">@(item.LatestResultPassed.Value ? "Pass" : "Fail")</span>
+                                <div class="small mt-1">@item.LatestResultPercentage?.ToString("0.##")%</div>
+                            }
+                            else
+                            {
+                                <span class="text-muted">No published result</span>
+                            }
+                        </td>
+                        <td><span class="badge bg-light text-dark border">@item.ProposedDecision</span></td>
+                        <td>
+                            <select name="Items[@i].Decision" class="form-select form-select-sm decision-select" data-row="@i" disabled="@(!editable ? "disabled" : null)">
+                                @foreach (PromotionDecision decision in Enum.GetValues<PromotionDecision>())
+                                {
+                                    <option value="@decision" selected="@(decision == item.Decision ? "selected" : null)">@decision</option>
+                                }
+                            </select>
+                            @if (!editable) { <input type="hidden" name="Items[@i].Decision" value="@item.Decision" /> }
+                        </td>
+                        <td>
+                            <select name="Items[@i].TargetSchoolClassId" class="form-select form-select-sm target-class" data-row="@i" disabled="@(!editable ? "disabled" : null)">
+                                <option value="">—</option>
+                                @foreach (var cls in Model.Classes)
+                                {
+                                    <option value="@cls.Id" selected="@(item.TargetSchoolClassId == cls.Id ? "selected" : null)">@cls.Name</option>
+                                }
+                            </select>
+                            @if (!editable) { <input type="hidden" name="Items[@i].TargetSchoolClassId" value="@item.TargetSchoolClassId" /> }
+                        </td>
+                        <td>
+                            <select name="Items[@i].TargetSectionId" class="form-select form-select-sm target-section" data-row="@i" disabled="@(!editable ? "disabled" : null)">
+                                <option value="">No section</option>
+                                @foreach (var sec in Model.Sections)
+                                {
+                                    <option value="@sec.Id" data-class="@sec.SchoolClassId" selected="@(item.TargetSectionId == sec.Id ? "selected" : null)">@sec.ClassName · @sec.Name</option>
+                                }
+                            </select>
+                            @if (!editable) { <input type="hidden" name="Items[@i].TargetSectionId" value="@item.TargetSectionId" /> }
+                        </td>
+                        <td>
+                            <input name="Items[@i].ReviewNote" class="form-control form-control-sm" value="@item.ReviewNote" maxlength="500" disabled="@(!editable ? "disabled" : null)" />
+                            @if (!editable) { <input type="hidden" name="Items[@i].ReviewNote" value="@item.ReviewNote" /> }
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        @if (editable)
+        {
+            <div class="card-footer bg-white border-0 p-4 d-flex flex-wrap justify-content-between gap-2">
+                <div class="text-muted small align-self-center">Saving the preview does not change any student enrollment.</div>
+                <button class="btn btn-primary" type="submit">Save Reviewed Decisions</button>
+            </div>
+        }
+    </div>
+</form>
+}
+
+@if (editable)
+{
+    <div class="card border-0 shadow-sm mt-4"><div class="card-body d-flex flex-wrap gap-3 justify-content-between align-items-center">
+        <div><h2 class="h5 mb-1">Step 2 — Commit student rollover</h2><p class="text-muted mb-0">Runs as one database transaction. A failure rolls the whole batch back instead of leaving half-promoted classes.</p></div>
+        <form asp-action="Commit" asp-route-id="@Model.BatchId" method="post">@Html.AntiForgeryToken()<button class="btn btn-success" onclick="return confirm('Commit these student decisions? This creates the new session enrollments transactionally.')">Commit Student Rollover</button></form>
+    </div></div>
+}
+else if (committed)
+{
+    <div class="row g-3 mt-1">
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h2 class="h5">Safe rollback</h2><p class="text-muted">Available only before finalization and only while promoted students have no attendance, marks/results, or fee transactions in the target session.</p><form asp-action="Rollback" asp-route-id="@Model.BatchId" method="post">@Html.AntiForgeryToken()<button class="btn btn-outline-danger" onclick="return confirm('Rollback this committed rollover?')">Rollback Before Go-Live</button></form></div></div></div>
+        <div class="col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><h2 class="h5">Step 3 — Finalize new session</h2><p class="text-muted">Archives the source session and activates the target session. Held students remain in the target session with Held status until an authorized staff member resolves their placement.</p><form asp-action="Finalize" asp-route-id="@Model.BatchId" method="post">@Html.AntiForgeryToken()<button class="btn btn-primary" onclick="return confirm('Finalize rollover, archive the old session and activate the new session?')">Finalize & Activate New Session</button></form></div></div></div>
+    </div>
+}
+
+@section Scripts {
+<script>
+(function () {
+    function needsTarget(value) { return value === 'Promote' || value === 'Repeat'; }
+    function syncRow(row) {
+        const decision = document.querySelector('.decision-select[data-row="' + row + '"]');
+        const cls = document.querySelector('.target-class[data-row="' + row + '"]');
+        const sec = document.querySelector('.target-section[data-row="' + row + '"]');
+        if (!decision || !cls || !sec) return;
+        const enabled = needsTarget(decision.value);
+        const held = decision.value === 'Hold';
+        cls.disabled = !enabled;
+        sec.disabled = !enabled;
+        if (held) return;
+        if (!enabled) { cls.value = ''; sec.value = ''; return; }
+        const classId = cls.value;
+        Array.from(sec.options).forEach(function (o) {
+            if (!o.value) { o.hidden = false; return; }
+            o.hidden = !!classId && o.dataset.class !== classId;
+        });
+        if (sec.selectedOptions.length && sec.selectedOptions[0].hidden) sec.value = '';
+    }
+    document.querySelectorAll('.decision-select').forEach(function (x) { x.addEventListener('change', function () { syncRow(x.dataset.row); }); syncRow(x.dataset.row); });
+    document.querySelectorAll('.target-class').forEach(function (x) { x.addEventListener('change', function () { syncRow(x.dataset.row); }); });
+    window.setAll = function (decision) {
+        document.querySelectorAll('.decision-select').forEach(function (x) { x.value = decision; syncRow(x.dataset.row); });
+    };
+})();
+</script>
+}

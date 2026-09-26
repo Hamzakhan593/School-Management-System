@@ -5,6 +5,7 @@ namespace School_Management_System.Models;
 public class AuditLog
 {
     public long Id { get; set; }
+    public int? SchoolId { get; set; }
 
     [StringLength(450)]
     public string? UserId { get; set; }
@@ -23,6 +24,12 @@ public class AuditLog
 
     [StringLength(1000)]
     public string? Details { get; set; }
+
+    [StringLength(4000)]
+    public string? OldValues { get; set; }
+
+    [StringLength(4000)]
+    public string? NewValues { get; set; }
 
     [StringLength(64)]
     public string? IpAddress { get; set; }

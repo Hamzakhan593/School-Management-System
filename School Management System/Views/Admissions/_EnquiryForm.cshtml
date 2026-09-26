@@ -24,7 +24,7 @@
     </div>
     <div class="col-md-4">
         <label asp-for="DesiredClass" class="form-label"></label>
-        <input asp-for="DesiredClass" class="form-control" placeholder="e.g. Grade 6" />
+        <input list="admissionClasses" asp-for="DesiredClass" class="form-control" placeholder="e.g. Grade 6" />
         <span asp-validation-for="DesiredClass" class="text-danger"></span>
     </div>
     <div class="col-md-4">
@@ -44,6 +44,7 @@
         <input asp-for="FollowUpDate" class="form-control" />
         <span asp-validation-for="FollowUpDate" class="text-danger"></span>
     </div>
+</div><details class="workspace-subsection"><summary>Referral & notes · optional</summary><div class="row g-3">
     <div class="col-md-6">
         <label asp-for="SourceReferral" class="form-label"></label>
         <input asp-for="SourceReferral" class="form-control" placeholder="Walk-in, Facebook, existing parent, etc." />
@@ -55,3 +56,5 @@
         <span asp-validation-for="Notes" class="text-danger"></span>
     </div>
 </div>
+</details>
+<datalist id="admissionClasses">@if (ViewBag.SchoolClasses is IEnumerable<string> schoolClasses) { foreach(var classLabel in schoolClasses) { <option value="@classLabel"></option> } }</datalist>

@@ -12,11 +12,13 @@ public class AttendanceService : IAttendanceService
 {
     private readonly ApplicationDbContext _db;
     private readonly AttendanceOptions _options;
+    private readonly ISystemSettingsService _settings;
 
-    public AttendanceService(ApplicationDbContext db, IOptions<AttendanceOptions> options)
+    public AttendanceService(ApplicationDbContext db, IOptions<AttendanceOptions> options, ISystemSettingsService settings)
     {
         _db = db;
         _options = options.Value;
+        _settings = settings;
     }
 
     public async Task<AttendanceMarkingViewModel> BuildMarkingSheetAsync(
@@ -40,6 +42,7 @@ public class AttendanceService : IAttendanceService
             ? sessions.FirstOrDefault(x => x.Id == academicSessionId.Value)
             : sessions.FirstOrDefault(x => x.Status == AcademicSessionStatus.Active) ?? sessions.FirstOrDefault();
 
+        var attendanceSettings = await _settings.GetAsync(schoolId, cancellationToken);
         var model = new AttendanceMarkingViewModel
         {
             AcademicSessionId = selectedSession?.Id ?? 0,
@@ -47,6 +50,7 @@ public class AttendanceService : IAttendanceService
             SectionId = sectionId,
             AttendanceDate = day,
             Sessions = sessions,
+            AllowedStatuses = GetAllowedStatuses(attendanceSettings),
             IsManager = isManager
         };
 
@@ -193,14 +197,14 @@ public class AttendanceService : IAttendanceService
                 AdmissionNumber = enrollment.Student.AdmissionNumber,
                 RollNumber = enrollment.RollNumber ?? enrollment.Student.RollNumber,
                 StudentName = enrollment.Student.FullName,
-                Status = attendance?.Status ?? StudentAttendanceStatus.Present,
+                Status = attendance?.Status ?? (StudentAttendanceStatus)0,
                 Source = attendance?.Source ?? AttendanceSource.Manual,
                 Remarks = attendance?.Remarks,
                 AlreadySaved = attendance is not null
             };
         }).ToList();
 
-        var afterCutoff = IsAfterTeacherCutoff(day);
+        var afterCutoff = IsAfterTeacherCutoff(day, attendanceSettings.TeacherAttendanceEditCutoffHours);
         model.CanEdit = isManager || !afterCutoff;
         model.RequiresCorrectionReason = isManager && afterCutoff;
 
@@ -218,6 +222,7 @@ public class AttendanceService : IAttendanceService
         CancellationToken cancellationToken = default)
     {
         var day = model.AttendanceDate.Date;
+        var attendanceSettings = await _settings.GetAsync(schoolId, cancellationToken);
 
         var session = await _db.AcademicSessions.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == model.AcademicSessionId && x.SchoolId == schoolId, cancellationToken);
@@ -255,7 +260,7 @@ public class AttendanceService : IAttendanceService
                 return new(false, "You are not assigned to mark attendance for this class/section.");
         }
 
-        var afterCutoff = IsAfterTeacherCutoff(day);
+        var afterCutoff = IsAfterTeacherCutoff(day, attendanceSettings.TeacherAttendanceEditCutoffHours);
         if (afterCutoff && !isManager)
             return new(false, "Teacher edit cutoff has passed. Ask a Principal/Admin to make the correction.");
         if (afterCutoff && isManager && string.IsNullOrWhiteSpace(model.CorrectionReason))
@@ -278,6 +283,8 @@ public class AttendanceService : IAttendanceService
             return new(false, "No students are enrolled in this class/section for the selected date.");
 
         var postedRows = model.Students ?? [];
+        if (postedRows.Any(x => (int)x.Status == 0))
+            return new(false, "Some students are unmarked. Choose a status for every student before saving.");
         if (postedRows.Count != roster.Count)
             return new(false, "The attendance roster changed. Reload the page and try again.");
 
@@ -298,11 +305,12 @@ public class AttendanceService : IAttendanceService
 
         var created = 0;
         var updated = 0;
+        var allowedStatuses = GetAllowedStatuses(attendanceSettings).ToHashSet();
 
         foreach (var row in postedRows)
         {
-            if (!Enum.IsDefined(typeof(StudentAttendanceStatus), row.Status))
-                return new(false, $"Invalid attendance status for student {row.StudentName}.");
+            if (!Enum.IsDefined(typeof(StudentAttendanceStatus), row.Status) || !allowedStatuses.Contains(row.Status))
+                return new(false, $"Attendance status {row.Status} is disabled in Settings for student {row.StudentName}.");
 
             var enrollment = rosterByStudent[row.StudentId];
             var cleanRemarks = NullIfBlank(row.Remarks);
@@ -358,6 +366,7 @@ public class AttendanceService : IAttendanceService
     {
         var monthStart = new DateTime(month.Year, month.Month, 1);
         var monthEnd = monthStart.AddMonths(1).AddDays(-1);
+        var attendanceSettings = await _settings.GetAsync(schoolId, cancellationToken);
 
         var sessions = await _db.AcademicSessions.AsNoTracking()
             .Where(x => x.SchoolId == schoolId && x.Status != AcademicSessionStatus.Archived)
@@ -376,7 +385,7 @@ public class AttendanceService : IAttendanceService
             SectionId = sectionId,
             Month = monthStart,
             Sessions = sessions,
-            LowAttendanceThresholdPercent = _options.LowAttendanceThresholdPercent
+            LowAttendanceThresholdPercent = attendanceSettings.LowAttendanceThresholdPercent
         };
 
         if (selectedSession is null)
@@ -515,7 +524,7 @@ public class AttendanceService : IAttendanceService
                 LeaveDays = countable.Count(x => x.Status == StudentAttendanceStatus.Leave),
                 HalfDays = half,
                 AttendancePercentage = percentage,
-                IsLowAttendance = countable.Count > 0 && percentage < _options.LowAttendanceThresholdPercent
+                IsLowAttendance = countable.Count > 0 && percentage < attendanceSettings.LowAttendanceThresholdPercent
             };
         })
         .OrderBy(x => x.RollNumber)
@@ -525,10 +534,25 @@ public class AttendanceService : IAttendanceService
         return model;
     }
 
-    private bool IsAfterTeacherCutoff(DateTime attendanceDay)
+    private static bool IsAfterTeacherCutoff(DateTime attendanceDay, int cutoffHours)
     {
-        var cutoff = attendanceDay.Date.AddDays(1).AddHours(Math.Max(0, _options.TeacherEditCutoffHoursAfterDayEnd));
+        var cutoff = attendanceDay.Date.AddDays(1).AddHours(Math.Max(0, cutoffHours));
         return DateTime.Now > cutoff;
+    }
+
+    private static List<StudentAttendanceStatus> GetAllowedStatuses(SystemSetting settings)
+    {
+        var statuses = new List<StudentAttendanceStatus>
+        {
+            StudentAttendanceStatus.Present,
+            StudentAttendanceStatus.Absent,
+            StudentAttendanceStatus.Holiday
+        };
+        if (settings.AttendanceAllowLate) statuses.Add(StudentAttendanceStatus.Late);
+        if (settings.AttendanceAllowLeave) statuses.Add(StudentAttendanceStatus.Leave);
+        if (settings.AttendanceAllowHalfDay) statuses.Add(StudentAttendanceStatus.HalfDay);
+        if (settings.AttendanceAllowNoClass) statuses.Add(StudentAttendanceStatus.NoClass);
+        return statuses.OrderBy(x => (int)x).ToList();
     }
 
     private async Task<HashSet<int>> GetTeacherClassIdsAsync(

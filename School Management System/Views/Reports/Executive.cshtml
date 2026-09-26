@@ -1,0 +1,23 @@
+@model School_Management_System.ViewModels.DashboardViewModel
+@{
+    ViewData["Title"] = "Executive Summary";
+}
+<section class="sms-page-head print-hide">
+    <div><div class="sms-eyebrow">Principal report</div><h1>Executive Summary</h1><p>@Model.SchoolName · @Model.AcademicSessionName</p></div>
+    <button class="btn btn-primary sms-btn" type="button" onclick="window.print()">Print summary</button>
+</section>
+<div class="sms-print-header"><h2>@Model.SchoolName</h2><strong>Executive Management Summary</strong><span>@Model.AcademicSessionName · Generated @Model.GeneratedAt.ToString("dd MMM yyyy HH:mm")</span></div>
+<div class="sms-kpi-grid executive-print-grid">
+    <article class="sms-kpi-card"><div class="sms-kpi-label">Active students</div><div class="sms-kpi-value">@Model.ActiveStudents</div><div class="sms-kpi-foot">@Model.NewAdmissionsThisMonth new this month</div></article>
+    <article class="sms-kpi-card"><div class="sms-kpi-label">Today attendance</div><div class="sms-kpi-value">@Model.TodayAttendancePercentage.ToString("0.#")%</div><div class="sms-kpi-foot">@Model.UnmarkedSections section(s) unmarked</div></article>
+    <article class="sms-kpi-card"><div class="sms-kpi-label">Month collections</div><div class="sms-kpi-value sms-money">Rs @Model.CurrentMonthCollectedFees.ToString("N0")</div><div class="sms-kpi-foot">@Model.CollectionRate.ToString("0.#")% collection rate</div></article>
+    <article class="sms-kpi-card"><div class="sms-kpi-label">Outstanding fees</div><div class="sms-kpi-value sms-money">Rs @Model.OutstandingFees.ToString("N0")</div><div class="sms-kpi-foot">@Model.FeeDefaulters overdue student(s)</div></article>
+</div>
+<div class="row g-4 mt-0">
+    <div class="col-md-6"><section class="sms-panel h-100"><div class="sms-panel-head compact"><div><h2>Operations</h2></div></div><dl class="sms-exec-dl"><div><dt>Active staff</dt><dd>@Model.ActiveStaff</dd></div><div><dt>Open enquiries</dt><dd>@Model.OpenEnquiries</dd></div><div><dt>Pending admissions</dt><dd>@Model.PendingAdmissions</dd></div><div><dt>Low attendance students</dt><dd>@Model.LowAttendanceStudents</dd></div><div><dt>Active exams</dt><dd>@Model.ActiveExams</dd></div></dl></section></div>
+    <div class="col-md-6"><section class="sms-panel h-100"><div class="sms-panel-head compact"><div><h2>Finance</h2></div></div><dl class="sms-exec-dl"><div><dt>Expected fees this month</dt><dd>Rs @Model.CurrentMonthExpectedFees.ToString("N0")</dd></div><div><dt>Collected this month</dt><dd>Rs @Model.CurrentMonthCollectedFees.ToString("N0")</dd></div><div><dt>Approved expenses</dt><dd>Rs @Model.CurrentMonthExpenses.ToString("N0")</dd></div><div><dt>Posted payroll</dt><dd>Rs @Model.CurrentMonthPayroll.ToString("N0")</dd></div><div><dt>Pending expense approvals</dt><dd>@Model.PendingExpenseApprovals</dd></div></dl></section></div>
+</div>
+<div class="row g-4 mt-0">
+    <div class="col-md-6"><section class="sms-panel h-100"><div class="sms-panel-head compact"><div><h2>Class strength</h2></div></div><table class="table sms-table mb-0"><thead><tr><th>Class</th><th class="text-end">Students</th></tr></thead><tbody>@foreach(var c in Model.ClassStrength){<tr><td>@c.Label</td><td class="text-end fw-semibold">@c.Value.ToString("N0")</td></tr>}</tbody></table></section></div>
+    <div class="col-md-6"><section class="sms-panel h-100"><div class="sms-panel-head compact"><div><h2>Priority alerts</h2></div></div><div class="sms-alert-list">@foreach(var a in Model.Alerts){<div class="sms-alert-row @a.Tone"><span class="sms-alert-dot"></span><span><strong>@a.Title</strong><small>@a.Message</small></span></div>}</div></section></div>
+</div>

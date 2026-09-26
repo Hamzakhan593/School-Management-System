@@ -1,0 +1,24 @@
+@model School_Management_System.ViewModels.ExpenseFormViewModel
+@{
+    ViewData["Title"] = "Edit Expense";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Edit Expense</h2>
+        <div class="text-muted">Editing an approved high-value expense sends it back for approval.</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Edit" method="post" enctype="multipart/form-data">
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="RowVersion" type="hidden" />
+            <partial name="_ExpenseForm" model="Model" />
+            <div class="mt-4">
+                <button class="btn btn-primary" type="submit">Update Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

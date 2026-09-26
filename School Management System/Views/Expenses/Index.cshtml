@@ -1,0 +1,88 @@
+@model School_Management_System.ViewModels.ExpensesIndexViewModel
+@{
+    ViewData["Title"] = "Expenses";
+    var canApprove = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin);
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div>
+        <h2 class="mb-1">Expenses & Financial Ledger</h2>
+        <div class="text-muted">Operating expenses with approval, evidence, reports and financial summary.</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a asp-action="Create" class="btn btn-primary">+ Record Expense</a>
+        <a asp-action="Report" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-primary">Expense Report</a>
+        <a asp-action="OtherIncome" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-primary">Other Income</a>
+        <a asp-action="FinancialSummary" asp-route-year="@Model.Year" asp-route-month="@Model.Month" class="btn btn-outline-dark">Financial Summary</a>
+        @if (canApprove)
+        {
+            <a asp-action="Categories" class="btn btn-outline-secondary">Categories</a>
+        }
+    </div>
+</div>
+<form method="get" class="card card-body shadow-sm mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-sm-3"><label class="form-label">Year</label><input name="year" value="@Model.Year" type="number" class="form-control" min="2000" max="2200" /></div>
+        <div class="col-sm-3"><label class="form-label">Month</label><select name="month" class="form-select">@for (var i = 1; i <= 12; i++)
+            {
+                if (i == Model.Month)
+                {
+                    <option value="@i" selected>@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)</option>
+                }
+                else
+                {
+                    <option value="@i">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)</option>
+                }
+            }</select></div>
+        <div class="col-sm-3"><button class="btn btn-outline-primary" type="submit">View Month</button></div>
+    </div>
+</form>
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Approved / Countable Expenses</div><div class="fs-3 fw-semibold">Rs. @Model.MonthApprovedTotal.ToString("N2")</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Pending Amount</div><div class="fs-3 fw-semibold">Rs. @Model.MonthPendingTotal.ToString("N2")</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Pending Approvals (All Dates)</div><div class="fs-3 fw-semibold">@Model.PendingApprovalCount</div></div></div></div>
+</div>
+<div class="card shadow-sm">
+    <div class="card-header fw-semibold">Recent Expenses</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Date</th><th>Category</th><th>Paid To</th><th>Amount</th><th>Method</th><th>Approval</th><th>Evidence</th><th style="min-width:260px">Actions</th></tr></thead>
+            <tbody>
+            @foreach (var item in Model.RecentExpenses)
+            {
+                var statusClass = item.IsCancelled ? "text-bg-secondary" : item.ApprovalStatus switch { ExpenseApprovalStatus.Approved => "text-bg-success", ExpenseApprovalStatus.Pending => "text-bg-warning", ExpenseApprovalStatus.Rejected => "text-bg-danger", _ => "text-bg-info" };
+                <tr class="@(item.IsCancelled ? "table-secondary" : "")">
+                    <td>@item.ExpenseDate.ToString("dd MMM yyyy")</td>
+                    <td>@item.ExpenseCategory.Name</td>
+                    <td>@item.PaidTo</td>
+                    <td class="fw-semibold">Rs. @item.Amount.ToString("N2")</td>
+                    <td>@item.PaymentMethod</td>
+                    <td><span class="badge @statusClass">@(item.IsCancelled ? "Cancelled" : item.ApprovalStatus.ToString())</span></td>
+                    <td>@if (!string.IsNullOrWhiteSpace(item.AttachmentStorageKey)){<a asp-action="Attachment" asp-route-id="@item.Id">Download</a>}else{<span class="text-muted">—</span>}</td>
+                    <td>
+                        @if (!item.IsCancelled)
+                        {
+                            <div class="d-flex flex-wrap gap-1">
+                                <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Edit</a>
+                                @if (canApprove && item.ApprovalStatus == ExpenseApprovalStatus.Pending)
+                                {
+                                    <form asp-action="Approve" method="post"><input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-success" type="submit">Approve</button></form>
+                                    <form asp-action="Reject" method="post" class="d-flex gap-1"><input type="hidden" name="id" value="@item.Id" /><input name="reason" class="form-control form-control-sm" style="width:110px" placeholder="Reject reason" required /><button class="btn btn-sm btn-outline-danger" type="submit">Reject</button></form>
+                                }
+                                <form asp-action="Cancel" method="post" class="d-flex gap-1"><input type="hidden" name="id" value="@item.Id" /><input name="reason" class="form-control form-control-sm" style="width:110px" placeholder="Cancel reason" required /><button class="btn btn-sm btn-outline-secondary" type="submit">Cancel</button></form>
+                            </div>
+                        }
+                        else
+                        {
+                            <span class="small text-muted">@item.CancellationReason</span>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (Model.RecentExpenses.Count == 0)
+            {
+                <tr><td colspan="8" class="text-center text-muted py-4">No expenses recorded yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

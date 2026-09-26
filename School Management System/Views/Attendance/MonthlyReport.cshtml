@@ -40,9 +40,9 @@
                 <label class="form-label">Section</label>
                 <select class="form-select" name="sectionId">
                     <option value="">-- All / none --</option>
-                    @foreach (var section in Model.Sections)
+                    @foreach (var sec in Model.Sections)
                     {
-                        <option value="@section.Id" selected="@(section.Id == Model.SectionId)">@section.Name</option>
+                        <option value="@sec.Id" selected="@(sec.Id == Model.SectionId)">@sec.Name</option>
                     }
                 </select>
             </div>
@@ -122,6 +122,6 @@
     </div>
 
     <div class="small text-muted mt-2">
-        Formula used in M06: Present + Late count as 1 attended day, Half Day counts as 0.5, Absent/Leave count as 0, and Holiday/No Class are excluded from countable days.
+        Formula used in : Present + Late count as 1 attended day, Half Day counts as 0.5, Absent/Leave count as 0, and Holiday/No Class are excluded from countable days.
     </div>
 }

@@ -1,0 +1,28 @@
+@{
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString() ?? string.Empty;
+    string IsActive(params string[] names) => names.Any(x => string.Equals(x, controller, StringComparison.OrdinalIgnoreCase)) ? "active" : string.Empty;
+    var isLeadership = User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin");
+    var canAdmissions = isLeadership || User.IsInRole("Receptionist");
+    var canStudents = canAdmissions;
+    var canAttendance = isLeadership || User.IsInRole("Teacher");
+    var canAcademics = isLeadership || User.IsInRole("Teacher") || User.IsInRole("ExamController");
+    var canFees = isLeadership || User.IsInRole("Accountant");
+    var canHr = isLeadership || User.IsInRole("HR");
+    var canPayroll = isLeadership || User.IsInRole("HR") || User.IsInRole("Accountant");
+    var canFinance = isLeadership || User.IsInRole("Accountant");
+}
+
+<nav class="sms-nav" aria-label="Main navigation"><div class="sms-nav-label">School workspace</div>
+<a class="sms-nav-link @IsActive("Dashboard")" asp-controller="Dashboard" asp-action="Index"><svg aria-hidden="true"><use href="#i-dashboard"></use></svg><span>Dashboard</span></a>
+@if (canStudents) { <a class="sms-nav-link @IsActive("Students")" asp-controller="Students" asp-action="Index"><svg aria-hidden="true"><use href="#i-students"></use></svg><span>Students</span></a> }
+@if (canAdmissions) { <a class="sms-nav-link @IsActive("Admissions")" asp-controller="Admissions" asp-action="Index"><svg aria-hidden="true"><use href="#i-admission"></use></svg><span>Admissions</span></a> }
+@if (canAttendance) { <a class="sms-nav-link @IsActive("Attendance", "CameraAttendance", "AttendanceIntegrations")" asp-controller="Attendance" asp-action="Index"><svg aria-hidden="true"><use href="#i-attendance"></use></svg><span>Attendance</span></a> }
+@if (canFees) { <a class="sms-nav-link @IsActive("Fees")" asp-controller="Fees" asp-action="Index"><svg aria-hidden="true"><use href="#i-fees"></use></svg><span>Fees</span></a> }
+@if (isLeadership || User.IsInRole("Teacher")) { <a class="sms-nav-link @IsActive("AcademicStructure")" asp-controller="AcademicStructure" asp-action="Index"><svg aria-hidden="true"><use href="#i-academic"></use></svg><span>Classes</span></a> }
+@if (canAcademics) { <a class="sms-nav-link @IsActive("Exams", "Results")" asp-controller="Exams" asp-action="Index"><svg aria-hidden="true"><use href="#i-exams"></use></svg><span>Exams / Results</span></a> }
+@if (canHr) { <a class="sms-nav-link @IsActive("Staff", "StaffAttendance")" asp-controller="Staff" asp-action="Index"><svg aria-hidden="true"><use href="#i-staff"></use></svg><span>Staff</span></a> }
+@if (isLeadership || User.IsInRole("Accountant") || User.IsInRole("Teacher") || User.IsInRole("ExamController") || User.IsInRole("HR") || User.IsInRole("Receptionist")) { <a class="sms-nav-link @IsActive("Reports")" asp-controller="Reports" asp-action="Index"><svg aria-hidden="true"><use href="#i-reports"></use></svg><span>Reports</span></a> }
+<div class="sms-nav-group"><div class="sms-nav-label">More tools</div><a class="sms-nav-link @IsActive("Communications")" asp-controller="Communications" asp-action="Index"><svg aria-hidden="true"><use href="#i-bell"></use></svg><span>Notices & Documents</span></a>
+@if (canFinance) { <a class="sms-nav-link @IsActive("Expenses")" asp-controller="Expenses" asp-action="Index"><svg aria-hidden="true"><use href="#i-expenses"></use></svg><span>Expenses & Ledger</span></a> }
+@if (canPayroll) { <a class="sms-nav-link @IsActive("Payroll")" asp-controller="Payroll" asp-action="Index"><svg aria-hidden="true"><use href="#i-payroll"></use></svg><span>Payroll</span></a> }
+@if (isLeadership) { <details open="@(new[] { "SchoolSetup", "AcademicSessions", "Promotions", "UserManagement", "Backup", "Settings" }.Contains(controller))"><summary class="sms-nav-link"><svg><use href="#i-settings"></use></svg>Administration</summary><div><a class="sms-nav-link @IsActive("SchoolSetup")" asp-controller="SchoolSetup" asp-action="Index"><svg aria-hidden="true"><use href="#i-school"></use></svg><span>School Profile</span></a><a class="sms-nav-link @IsActive("AcademicSessions")" asp-controller="AcademicSessions" asp-action="Index"><svg aria-hidden="true"><use href="#i-session"></use></svg><span>Academic Sessions</span></a><a class="sms-nav-link @IsActive("Promotions")" asp-controller="Promotions" asp-action="Index"><svg aria-hidden="true"><use href="#i-session"></use></svg><span>Annual Promotion</span></a><a class="sms-nav-link @IsActive("UserManagement")" asp-controller="UserManagement" asp-action="Index"><svg aria-hidden="true"><use href="#i-users"></use></svg><span>Users & Roles</span></a><a class="sms-nav-link @IsActive("Backup")" asp-controller="Backup" asp-action="Index"><svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Backup & Audit</span></a><a class="sms-nav-link @IsActive("Settings")" asp-controller="Settings" asp-action="Index"><svg aria-hidden="true"><use href="#i-settings"></use></svg><span>Settings</span></a></div></details> }</div></nav>

@@ -5,16 +5,16 @@
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
-        <h1 class="h3 mb-1">Student Management</h1>
+        <h1 class="h3 mb-1">Students</h1>
         <p class="text-muted mb-0">Search and view the complete student profile and academic placement history.</p>
     </div>
     @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Receptionist))
     {
-        <a class="btn btn-primary" asp-controller="Admissions" asp-action="CreateEnquiry">+ New Admission</a>
+        <a class="btn btn-primary" asp-controller="Admissions" asp-action="CreateEnquiry">Add Student</a>
     }
 </div>
 
-<div class="row g-3 mb-4">
+<div class="row g-3 mb-4 student-summary">
     <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Total Students</div><div class="display-6 fw-semibold">@Model.TotalStudents</div></div></div></div>
     <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Active</div><div class="display-6 fw-semibold">@Model.ActiveStudents</div></div></div></div>
     <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Other Status</div><div class="display-6 fw-semibold">@Model.InactiveStudents</div></div></div></div>
@@ -25,7 +25,7 @@
         <form method="get" class="row g-2 align-items-end">
             <div class="col-lg-4">
                 <label class="form-label">Search</label>
-                <input class="form-control" name="q" value="@Model.Query" placeholder="Name, admission no, roll no, parent phone, B-Form" />
+                <input class="form-control" name="q" value="@Model.Query" placeholder="Student name or number" aria-describedby="studentSearchHelp" /><div id="studentSearchHelp" class="form-text">Name, admission number, roll number or guardian phone.</div>
             </div>
             <div class="col-md-3 col-lg-2">
                 <label class="form-label">Status</label>
@@ -57,10 +57,11 @@
                     }
                 </select>
             </div>
+            <div class="col-md-3 col-lg-2"><label for="sectionName" class="form-label">Section</label><select name="sectionName" id="sectionName" class="form-select"><option value="">All sections</option>@foreach (string sectionLabel in ViewBag.Sections) { <option value="@sectionLabel" selected="@(ViewBag.SectionName == sectionLabel)">@sectionLabel</option> }</select></div>
             <div class="col-md-3 col-lg-2 d-grid">
-                <button class="btn btn-outline-primary" type="submit">Filter</button>
+                <button class="btn btn-outline-primary" type="submit">Search Students</button>
             </div>
-        </form>
+        <div class="col-auto"><a class="btn btn-link" asp-action="Index">Clear filters</a></div></form>
     </div>
 </div>
 
@@ -76,7 +77,7 @@
                         <th>Roll No.</th>
                         <th>Guardian Phone</th>
                         <th>Status</th>
-                        <th></th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -120,3 +121,10 @@
         </div>
     </div>
 </div>
+
+
+<nav class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-3" aria-label="Student pages">
+<span class="text-muted small">@ViewBag.MatchCount matching students · Page @ViewBag.Page of @ViewBag.PageCount</span><div class="d-flex gap-2">
+@if (ViewBag.Page > 1) { <a class="btn btn-outline-secondary" asp-action="Index" asp-route-page="@(ViewBag.Page - 1)" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-className="@Model.ClassName" asp-route-sectionName="@ViewBag.SectionName" asp-route-academicSessionId="@Model.AcademicSessionId">Previous</a> }
+@if (ViewBag.Page < ViewBag.PageCount) { <a class="btn btn-outline-primary" asp-action="Index" asp-route-page="@(ViewBag.Page + 1)" asp-route-q="@Model.Query" asp-route-status="@Model.Status" asp-route-className="@Model.ClassName" asp-route-sectionName="@ViewBag.SectionName" asp-route-academicSessionId="@Model.AcademicSessionId">Next</a> }
+</div></nav>

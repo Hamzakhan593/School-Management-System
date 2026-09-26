@@ -1,0 +1,23 @@
+@model School_Management_System.ViewModels.AuditActivityReportViewModel
+@{
+    ViewData["Title"] = "Audit Activity Report";
+}
+<section class="sms-page-head">
+    <div><div class="sms-eyebrow">Security & accountability</div><h1>Audit Activity</h1><p>Latest sensitive system activity. Up to 500 records are displayed per filtered view.</p></div>
+    <button class="btn btn-light sms-btn" type="button" onclick="window.print()">Print</button>
+</section>
+<section class="sms-panel mb-4 print-hide">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-lg-3"><label class="form-label">Search</label><input class="form-control" name="search" value="@Model.Search" placeholder="User, entity or details" /></div>
+        <div class="col-lg-3"><label class="form-label">Action</label><input class="form-control" name="actionName" value="@Model.ActionName" placeholder="e.g. Fee, Auth, Result" /></div>
+        <div class="col-lg-2"><label class="form-label">From</label><input class="form-control" type="date" name="from" value="@(Model.From?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="col-lg-2"><label class="form-label">To</label><input class="form-control" type="date" name="to" value="@(Model.To?.ToString("yyyy-MM-dd"))" /></div>
+        <div class="col-lg-2 d-flex gap-2"><button class="btn btn-primary flex-grow-1">Apply</button><a class="btn btn-light" asp-action="AuditActivity">Reset</a></div>
+    </form>
+</section>
+<section class="sms-panel p-0 overflow-hidden">
+    <div class="table-responsive"><table class="table sms-table align-middle mb-0"><thead><tr><th>Date/Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP</th></tr></thead><tbody>
+    @if (Model.Rows.Count == 0){<tr><td colspan="6" class="sms-no-data">No audit entries matched your filters.</td></tr>}
+    @foreach (var row in Model.Rows){<tr><td class="text-nowrap">@row.Date.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td><td>@row.User</td><td><span class="sms-code">@row.Action</span></td><td>@row.Entity @if(!string.IsNullOrWhiteSpace(row.EntityId)){<small class="text-secondary">#@row.EntityId</small>}</td><td class="sms-details-cell">@(row.Details ?? "-")</td><td>@(row.IpAddress ?? "-")</td></tr>}
+    </tbody></table></div>
+</section>

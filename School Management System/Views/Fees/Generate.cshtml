@@ -1,0 +1,44 @@
+@model School_Management_System.ViewModels.ChallanGenerationViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Generate Challans";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h2 class="mb-1">Generate Fee Challans</h2><div class="text-muted">Preview first; commit only after counts and amounts look correct.</div></div><a class="btn btn-outline-secondary" asp-action="Index">Back to Fees</a></div>
+<div class="card border-0 shadow-sm mb-4"><div class="card-body">
+<form asp-action="Preview" method="post" id="generationForm">@Html.AntiForgeryToken()
+<div class="row g-3">
+<div class="col-md-3"><label class="form-label">Academic Session</label><select class="form-select" asp-for="AcademicSessionId">@foreach(var x in Model.Sessions){<option value="@x.Id" selected="@(x.Id==Model.AcademicSessionId)">@x.Text</option>}</select></div>
+<div class="col-md-3"><label class="form-label">Billing Month</label><input class="form-control" type="month" id="billingMonthPicker" value="@Model.BillingMonth.ToString("yyyy-MM")" /><input type="hidden" name="BillingMonth" id="billingMonthValue" value="@Model.BillingMonth.ToString("yyyy-MM-01")" /></div>
+<div class="col-md-3"><label class="form-label">Generation Scope</label><select id="scope" class="form-select" asp-for="Scope" asp-items="Html.GetEnumSelectList<FeeBatchScope>()"></select></div>
+<div class="col-md-3 scope-individual"><label class="form-label">Student</label><select class="form-select" asp-for="StudentId"><option value="">-- Select --</option>@foreach(var x in Model.Students){<option value="@x.Id" selected="@(x.Id==Model.StudentId)">@x.Text</option>}</select></div>
+<div class="col-md-3 scope-class"><label class="form-label">Class</label><select class="form-select" asp-for="SchoolClassId"><option value="">-- Select --</option>@foreach(var x in Model.Classes){<option value="@x.Id" selected="@(x.Id==Model.SchoolClassId)">@x.Text</option>}</select></div>
+<div class="col-md-4 scope-class"><label class="form-label">Section (optional)</label><select class="form-select" asp-for="SectionId"><option value="">All sections in selected class</option>@foreach(var x in Model.Sections){<option value="@x.Id" selected="@(x.Id==Model.SectionId)">@x.Text</option>}</select></div>
+<div class="col-12 scope-selected"><label class="form-label">Selected Students</label><select class="form-select" asp-for="SelectedStudentIds" multiple size="8">@foreach(var x in Model.Students){<option value="@x.Id" selected="@(Model.SelectedStudentIds.Contains(x.Id))">@x.Text</option>}</select><div class="form-text">Hold Ctrl to select multiple students on desktop.</div></div>
+<div class="col-12"><button class="btn btn-primary" type="submit">Preview Batch</button></div>
+</div>
+</form>
+</div></div>
+
+@if(Model.IsPreview && Model.Preview is not null)
+{
+    <div class="alert alert-info"><strong>Preview only:</strong> nothing has been posted to the fee ledger yet.</div>
+    <div class="row g-3 mb-3">
+        <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Eligible Students</div><div class="fs-4 fw-semibold">@Model.Preview.EligibleStudents</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Will Generate</div><div class="fs-4 fw-semibold">@Model.Preview.WillGenerate</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">Skipped</div><div class="fs-4 fw-semibold">@(Model.Preview.WillSkipExisting + Model.Preview.WillSkipNoStructure)</div></div></div></div>
+        <div class="col-md-3"><div class="card border-0 shadow-sm"><div class="card-body"><div class="text-muted small">New Charges</div><div class="fs-4 fw-semibold">PKR @Model.Preview.EstimatedCurrentCharges.ToString("N2")</div></div></div></div>
+    </div>
+    <div class="card border-0 shadow-sm mb-3"><div class="table-responsive" style="max-height:430px"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light sticky-top"><tr><th>Student</th><th>Class</th><th>Current Charges</th><th>Previous Outstanding</th><th>Result</th></tr></thead><tbody>
+    @foreach(var row in Model.Preview.Rows){<tr><td><div class="fw-semibold">@row.StudentName</div><small class="text-muted">@row.AdmissionNumber</small></td><td>@row.ClassSection</td><td>PKR @row.CurrentCharges.ToString("N2")</td><td>PKR @row.PreviousOutstanding.ToString("N2")</td><td>@row.Result</td></tr>}
+    </tbody></table></div></div>
+    <form asp-action="Commit" method="post" class="d-flex gap-2 align-items-center">@Html.AntiForgeryToken()
+        <input type="hidden" asp-for="AcademicSessionId" /><input type="hidden" asp-for="BillingMonth" value="@Model.BillingMonth.ToString("yyyy-MM-dd")" /><input type="hidden" asp-for="Scope" /><input type="hidden" asp-for="StudentId" /><input type="hidden" asp-for="SchoolClassId" /><input type="hidden" asp-for="SectionId" /><input type="hidden" asp-for="PreviewToken" />
+        @foreach(var id in Model.SelectedStudentIds){<input type="hidden" name="SelectedStudentIds" value="@id" />}
+        <button class="btn btn-success px-4" type="submit" disabled="@(Model.Preview.WillGenerate==0)">Commit & Generate @Model.Preview.WillGenerate Challan(s)</button>
+        <a class="btn btn-outline-secondary" asp-action="Generate">Discard Preview</a>
+    </form>
+}
+@section Scripts{
+<script>
+(()=>{const s=document.getElementById('scope'),picker=document.getElementById('billingMonthPicker'),value=document.getElementById('billingMonthValue'),form=document.getElementById('generationForm');const show=()=>{document.querySelectorAll('.scope-individual').forEach(x=>x.style.display=s.value==='1'?'':'none');document.querySelectorAll('.scope-class').forEach(x=>x.style.display=s.value==='2'?'':'none');document.querySelectorAll('.scope-selected').forEach(x=>x.style.display=s.value==='4'?'':'none');};s?.addEventListener('change',show);form?.addEventListener('submit',()=>{if(picker?.value&&value)value.value=picker.value+'-01';});show();})();
+</script>}

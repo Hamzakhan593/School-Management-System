@@ -1,0 +1,40 @@
+@model School_Management_System.ViewModels.PayrollIndexViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Payroll";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Staff Payroll</h1><p class="text-muted mb-0">Monthly payroll runs, validation, approvals, posting and payslips.</p></div>
+    <div class="d-flex gap-2"><a class="btn btn-outline-secondary" asp-controller="StaffAttendance" asp-action="Index">Staff Attendance</a><a class="btn btn-outline-secondary" asp-controller="Staff" asp-action="Index">Staff / HR</a></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Staff Missing Salary Structure</div><div class="display-6 fw-semibold">@Model.StaffWithoutSalaryStructure</div><div class="small text-muted">Open Staff / HR → employee → Salary & Payroll.</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Approved, Waiting to Post</div><div class="display-6 fw-semibold">@Model.PendingApprovedRuns</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Posted Payroll · @(new DateTime(Model.Year, Model.Month, 1).ToString("MMMM yyyy"))</div><div class="h2 fw-semibold mb-0">PKR @Model.PostedPayrollThisMonth.ToString("N2")</div></div></div></div>
+</div>
+
+<div class="card shadow-sm mb-4"><div class="card-header fw-semibold">Create Monthly Payroll Preview</div><div class="card-body">
+    <form method="post" asp-action="Generate" class="row g-2 align-items-end">
+        @Html.AntiForgeryToken()
+        <div class="col-md-3"><label class="form-label">Year</label><input class="form-control" type="number" name="year" min="2000" max="2200" value="@Model.Year" /></div>
+        <div class="col-md-3"><label class="form-label">Month</label><select class="form-select" name="month">@for(var m=1;m<=12;m++){<option value="@m" selected="@(m==Model.Month)">@(new DateTime(2000,m,1).ToString("MMMM"))</option>}</select></div>
+        <div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Generate Preview</button></div>
+    </form>
+    <div class="form-text mt-2">Duplicate protection allows only one payroll run per school/month.</div>
+</div></div>
+
+<div class="card shadow-sm"><div class="card-header fw-semibold">Recent Payroll Runs</div><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+    <thead class="table-light"><tr><th>Period</th><th>Status</th><th>Created</th><th>Payment</th><th></th></tr></thead>
+    <tbody>
+    @if(Model.Runs.Count==0){<tr><td colspan="5" class="text-center text-muted py-5">No payroll runs yet.</td></tr>}
+    else
+    {
+        @foreach(var run in Model.Runs)
+        {
+            var badge = run.Status switch { PayrollRunStatus.Posted => "success", PayrollRunStatus.Approved => "primary", PayrollRunStatus.Validated => "info", PayrollRunStatus.Cancelled => "secondary", _ => "warning" };
+            <tr><td><strong>@(new DateTime(run.PeriodYear,run.PeriodMonth,1).ToString("MMMM yyyy"))</strong></td><td><span class="badge text-bg-@badge">@run.Status</span></td><td>@run.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td><td>@(run.PaymentMethod?.ToString() ?? "—")<div class="small text-muted">@(run.PaymentReference ?? "")</div></td><td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Run" asp-route-id="@run.Id">Open</a></td></tr>
+        }
+    }
+    </tbody>
+</table></div></div>

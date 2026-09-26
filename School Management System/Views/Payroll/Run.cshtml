@@ -1,0 +1,80 @@
+@model School_Management_System.ViewModels.PayrollRunViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Payroll Run";
+    var period = new DateTime(Model.Run.PeriodYear, Model.Run.PeriodMonth, 1);
+    var badge = Model.Run.Status switch { PayrollRunStatus.Posted => "success", PayrollRunStatus.Approved => "primary", PayrollRunStatus.Validated => "info", PayrollRunStatus.Cancelled => "secondary", _ => "warning" };
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Payroll · @period.ToString("MMMM yyyy")</h1><p class="text-muted mb-0">Preview → Validate → Approve → Post</p></div>
+    <div class="d-flex gap-2"><span class="badge text-bg-@badge fs-6 align-self-center">@Model.Run.Status</span><a class="btn btn-outline-secondary" asp-action="Index">Back</a></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Staff</div><div class="h2 mb-0">@Model.Items.Count</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Gross</div><div class="h4 mb-0">PKR @Model.GrossTotal.ToString("N2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Deductions</div><div class="h4 mb-0">PKR @Model.DeductionTotal.ToString("N2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Net Payroll</div><div class="h4 mb-0">PKR @Model.NetTotal.ToString("N2")</div></div></div></div>
+</div>
+
+@if(Model.InvalidItems>0){<div class="alert alert-danger"><strong>@Model.InvalidItems item(s) are invalid.</strong> Open the related staff salary setup and correct missing/inactive salary rules or excessive deductions, then Recalculate.</div>}
+
+<div class="card shadow-sm mb-4"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    @if(Model.Run.Status==PayrollRunStatus.Draft)
+    {
+        <form method="post" asp-action="Recalculate">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Run.Id"/><button class="btn btn-outline-primary">Recalculate Preview</button></form>
+        <form method="post" asp-action="ValidateRun">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Run.Id"/><button class="btn btn-primary" disabled="@(Model.InvalidItems>0)">Validate Payroll</button></form>
+    }
+    @if(Model.Run.Status==PayrollRunStatus.Validated)
+    {
+        <form method="post" asp-action="Approve">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@Model.Run.Id"/><button class="btn btn-primary">Approve Payroll</button></form>
+    }
+    @if(Model.Run.Status==PayrollRunStatus.Approved)
+    {
+        <form method="post" asp-action="Post" class="row g-2 align-items-end flex-grow-1">
+            @Html.AntiForgeryToken()<input type="hidden" name="RunId" value="@Model.Run.Id"/>
+            <div class="col-md-3"><label class="form-label">Payment Method</label><select class="form-select" name="PaymentMethod" asp-items="Html.GetEnumSelectList<PayrollPaymentMethod>()"></select></div>
+            <div class="col-md-5"><label class="form-label">Batch / Payment Reference</label><input class="form-control" name="PaymentReference" maxlength="150" placeholder="Optional bank batch / cheque reference" /></div>
+            <div class="col-md-3"><button class="btn btn-success w-100" type="submit">Post Payroll</button></div>
+        </form>
+    }
+    @if(Model.Run.Status==PayrollRunStatus.Posted)
+    {
+        <div class="text-success fw-semibold">Posted @(Model.Run.PostedAtUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm")) · @Model.Run.PaymentMethod · @(Model.Run.PaymentReference ?? "No reference")</div>
+    }
+</div></div>
+
+<div class="card shadow-sm mb-4"><div class="card-header fw-semibold">Payroll Items</div><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+    <thead class="table-light"><tr><th>Employee</th><th>Attendance</th><th>Basic</th><th>Allowances</th><th>Deductions</th><th>Net Pay</th><th>Validation</th><th></th></tr></thead>
+    <tbody>
+    @foreach(var item in Model.Items)
+    {
+        <tr class="@(!item.IsValid ? "table-danger" : "")">
+            <td><strong>@item.StaffNameSnapshot</strong><div class="small text-muted">@item.EmployeeIdSnapshot · @(item.DepartmentSnapshot ?? "No department")</div></td>
+            <td class="small">P @item.PresentDays · A @item.AbsentDays · L @item.LateDays · Leave @item.LeaveDays · HD @item.HalfDays</td>
+            <td>PKR @item.BasicSalary.ToString("N2")</td>
+            <td><div>Fixed: @item.FixedAllowances.ToString("N2")</div>@if(item.ManualAllowance>0){<div class="small text-success">Manual: +@item.ManualAllowance.ToString("N2")</div>}</td>
+            <td><div>Attendance: @item.AttendanceDeduction.ToString("N2")</div><div>Fixed: @item.FixedDeduction.ToString("N2")</div><div>Advance: @item.AdvanceDeduction.ToString("N2")</div>@if(item.ManualDeduction>0){<div class="small text-danger">Manual: @item.ManualDeduction.ToString("N2")</div>}</td>
+            <td><strong>PKR @item.NetPay.ToString("N2")</strong></td>
+            <td>@if(item.IsValid){<span class="badge text-bg-success">Valid</span>}else{<span class="badge text-bg-danger">Invalid</span><div class="small text-danger mt-1">@item.ValidationMessage</div>}</td>
+            <td class="text-end">
+                @if(Model.Run.Status==PayrollRunStatus.Draft)
+                {
+                    <button class="btn btn-sm btn-outline-primary" type="button" data-bs-toggle="collapse" data-bs-target="#adj-@item.Id">Adjust</button>
+                }
+                @if(Model.Run.Status==PayrollRunStatus.Posted)
+                {
+                    <a class="btn btn-sm btn-outline-success" asp-action="Payslip" asp-route-itemId="@item.Id">Payslip PDF</a>
+                }
+                <a class="btn btn-sm btn-outline-secondary" asp-action="StaffHistory" asp-route-staffId="@item.StaffId">History</a>
+            </td>
+        </tr>
+        @if(Model.Run.Status==PayrollRunStatus.Draft)
+        {
+            <tr class="collapse" id="adj-@item.Id"><td colspan="8"><form method="post" asp-action="UpdateAdjustment" class="row g-2 align-items-end">@Html.AntiForgeryToken()<input type="hidden" name="RunId" value="@Model.Run.Id"/><input type="hidden" name="ItemId" value="@item.Id"/><div class="col-md-2"><label class="form-label">Manual Allowance</label><input class="form-control" name="ManualAllowance" value="@item.ManualAllowance" type="number" min="0" step="0.01"/></div><div class="col-md-2"><label class="form-label">Manual Deduction</label><input class="form-control" name="ManualDeduction" value="@item.ManualDeduction" type="number" min="0" step="0.01"/></div><div class="col-md-5"><label class="form-label">Reason / Note</label><input class="form-control" name="ManualAdjustmentNote" value="@item.ManualAdjustmentNote" maxlength="500"/></div><div class="col-md-2"><button class="btn btn-primary w-100">Save Adjustment</button></div></form></td></tr>
+        }
+    }
+    </tbody>
+</table></div></div>
+
+<div class="card shadow-sm"><div class="card-header fw-semibold">Department Totals</div><div class="table-responsive"><table class="table mb-0"><thead class="table-light"><tr><th>Department</th><th>Staff</th><th>Gross</th><th>Deductions</th><th>Net Pay</th></tr></thead><tbody>@foreach(var d in Model.DepartmentTotals){<tr><td>@d.Department</td><td>@d.StaffCount</td><td>PKR @d.GrossPay.ToString("N2")</td><td>PKR @d.Deductions.ToString("N2")</td><td><strong>PKR @d.NetPay.ToString("N2")</strong></td></tr>}</tbody></table></div></div>

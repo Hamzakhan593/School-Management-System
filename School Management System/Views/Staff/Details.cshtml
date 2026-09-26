@@ -1,0 +1,213 @@
+@model School_Management_System.ViewModels.StaffDetailsViewModel
+@{
+    ViewData["Title"] = "Staff Profile";
+    var s = Model.Staff;
+    var canManageAccounts = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin);
+    var requestedTab = Context.Request.Query["tab"].ToString();
+    var activeTab = string.IsNullOrWhiteSpace(requestedTab) ? "overview" : requestedTab.ToLowerInvariant();
+    var isCurrent = s.Status == StaffStatus.Active || s.Status == StaffStatus.OnLeave || s.Status == StaffStatus.Inactive;
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">@s.FullName</h1><div class="text-muted">@s.EmployeeId · @s.Designation</div></div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@s.Id">Edit Profile</a>
+        @if (isCurrent)
+        {
+            <a class="btn btn-outline-danger" asp-action="MarkExit" asp-route-id="@s.Id">Mark Exit</a>
+        }
+        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-4 align-items-center">
+            <div class="col-md-auto text-center">
+                @if (!string.IsNullOrWhiteSpace(s.PhotoStorageKey))
+                {
+                    <img src="@Url.Action("Photo", "Staff", new { id = s.Id })" alt="Staff photo" class="rounded border" style="width:120px;height:120px;object-fit:cover" />
+                }
+                else
+                {
+                    <div class="rounded border bg-light d-flex align-items-center justify-content-center text-muted" style="width:120px;height:120px">No Photo</div>
+                }
+                <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="mt-2" style="max-width:220px">
+                    <input type="hidden" name="staffId" value="@s.Id" />
+                    <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-2" />
+                    <button class="btn btn-sm btn-outline-secondary w-100" type="submit">Update Photo</button>
+                </form>
+            </div>
+            <div class="col">
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Status</small><span class="badge text-bg-@(isCurrent ? "success" : "secondary")">@s.Status</span></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Employment</small><strong>@s.EmploymentType</strong></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Department</small><strong>@(s.Department ?? "—")</strong></div>
+                    <div class="col-sm-6 col-lg-3"><small class="text-muted d-block">Joined</small><strong>@s.JoiningDate.ToString("dd MMM yyyy")</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item"><button class="nav-link @(activeTab == "overview" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "teaching" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#teaching" type="button">Teaching Assignments</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "documents" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#documents" type="button">Documents</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "account" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#account" type="button">User Account</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "payroll" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#payroll" type="button">Attendance & Payroll</button></li>
+</ul>
+
+<div class="tab-content">
+    <div class="tab-pane fade @(activeTab == "overview" ? "show active" : "")" id="overview">
+        <div class="card shadow-sm"><div class="card-body">
+            <h2 class="h5">Employee Information</h2><hr />
+            <div class="row g-3">
+                <div class="col-md-4"><small class="text-muted d-block">Employee ID</small><strong>@s.EmployeeId</strong></div>
+                <div class="col-md-4"><small class="text-muted d-block">CNIC</small><strong>@(s.Cnic ?? "—")</strong></div>
+                <div class="col-md-4"><small class="text-muted d-block">Phone</small><strong>@(s.Phone ?? "—")</strong></div>
+                <div class="col-md-4"><small class="text-muted d-block">Email</small><strong>@(s.Email ?? "—")</strong></div>
+                <div class="col-md-4"><small class="text-muted d-block">Designation</small><strong>@s.Designation</strong></div>
+                <div class="col-md-4"><small class="text-muted d-block">Department</small><strong>@(s.Department ?? "—")</strong></div>
+                <div class="col-12"><small class="text-muted d-block">Qualification</small><strong>@(s.Qualification ?? "—")</strong></div>
+                <div class="col-12"><small class="text-muted d-block">Address</small><strong>@(s.Address ?? "—")</strong></div>
+                @if (s.ExitDate.HasValue)
+                {
+                    <div class="col-md-4"><small class="text-muted d-block">Exit Date</small><strong>@s.ExitDate.Value.ToString("dd MMM yyyy")</strong></div>
+                    <div class="col-md-8"><small class="text-muted d-block">Exit Reason</small><strong>@(s.ExitReason ?? "—")</strong></div>
+                }
+                @if (!string.IsNullOrWhiteSpace(s.Notes))
+                {
+                    <div class="col-12"><small class="text-muted d-block">Notes</small><span>@s.Notes</span></div>
+                }
+            </div>
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "teaching" ? "show active" : "")" id="teaching">
+        <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div><h2 class="h5 mb-1">Teacher / Class Assignments</h2><p class="text-muted mb-0">Assignments are shared with so the same teacher mapping is used by attendance and exams.</p></div>
+                <a class="btn btn-outline-primary" asp-controller="AcademicStructure" asp-action="Index">Open Classes & Subjects</a>
+            </div>
+            @if (Model.LinkedUser is null)
+            {
+                <div class="alert alert-info mb-0">Link this staff profile to a system user account first. Teacher assignments in are attached to the Teacher user account.</div>
+            }
+            else
+            {
+                @if (Model.ClassTeacherSections.Count > 0)
+                {
+                    <h3 class="h6">Class Teacher</h3>
+                    <div class="mb-3">
+                        @foreach (var sec in Model.ClassTeacherSections)
+                        {
+                            <span class="badge text-bg-primary me-1">@sec.SchoolClass.Name - @sec.Name</span>
+                        }
+                    </div>
+                }
+                <div class="table-responsive">
+                    <table class="table align-middle"><thead><tr><th>Session</th><th>Class</th><th>Section</th><th>Subject</th></tr></thead><tbody>
+                    @if (Model.TeacherAssignments.Count == 0)
+                    {
+                        <tr><td colspan="4" class="text-center text-muted py-4">No active subject assignments found.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var item in Model.TeacherAssignments)
+                        {
+                            <tr><td>@item.AcademicSession.Name</td><td>@item.SchoolClass.Name</td><td>@(item.Section?.Name ?? "All")</td><td>@item.Subject.Title</td></tr>
+                        }
+                    }
+                    </tbody></table>
+                </div>
+            }
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "documents" ? "show active" : "")" id="documents">
+        <div class="card shadow-sm"><div class="card-body">
+            <h2 class="h5">Staff Documents</h2>
+            <form asp-action="UploadDocument" method="post" enctype="multipart/form-data" class="row g-2 align-items-end border rounded p-3 mb-3">
+                <input type="hidden" name="StaffId" value="@s.Id" />
+                <div class="col-md-4"><label class="form-label">Document Type</label><select name="DocumentType" class="form-select" asp-items="Html.GetEnumSelectList<StaffDocumentType>()"></select></div>
+                <div class="col-md-6"><label class="form-label">File</label><input type="file" name="File" accept=".pdf,.jpg,.jpeg,.png" class="form-control" required /></div>
+                <div class="col-md-2 d-grid"><button class="btn btn-primary" type="submit">Upload</button></div>
+                <div class="col-12"><small class="text-muted">PDF/JPG/PNG, maximum 5 MB. Files are stored outside the public web folder.</small></div>
+            </form>
+            <div class="table-responsive"><table class="table align-middle"><thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th>Size</th><th></th></tr></thead><tbody>
+            @if (Model.Documents.Count == 0)
+            {
+                <tr><td colspan="5" class="text-center text-muted py-4">No staff documents uploaded.</td></tr>
+            }
+            else
+            {
+                @foreach (var doc in Model.Documents)
+                {
+                    <tr><td>@doc.DocumentType</td><td>@doc.OriginalFileName</td><td>@doc.UploadedAtUtc.ToLocalTime().ToString("dd MMM yyyy")</td><td>@Math.Ceiling(doc.SizeBytes / 1024d) KB</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="DownloadDocument" asp-route-id="@doc.Id">Download</a> <form asp-action="DeleteDocument" asp-route-id="@doc.Id" method="post" class="d-inline" onsubmit="return confirm('Remove this document from the staff profile?');"><button class="btn btn-sm btn-outline-danger" type="submit">Remove</button></form></td></tr>
+                }
+            }
+            </tbody></table></div>
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "account" ? "show active" : "")" id="account">
+        <div class="card shadow-sm"><div class="card-body">
+            <h2 class="h5">System User Account</h2>
+            @if (Model.LinkedUser is not null)
+            {
+                <div class="border rounded p-3 mb-3">
+                    <strong>@Model.LinkedUser.FullName</strong><div>@Model.LinkedUser.Email</div>
+                    <div class="mt-2">
+                        @foreach (var role in Model.LinkedUserRoles)
+                        {
+                            <span class="badge text-bg-secondary me-1">@role</span>
+                        }
+                    </div>
+                </div>
+                @if (canManageAccounts)
+                {
+                    <form asp-action="UnlinkUser" method="post" onsubmit="return confirm('Unlink this account? The user and staff records will both remain.');">
+                        <input type="hidden" name="staffId" value="@s.Id" /><button class="btn btn-outline-danger" type="submit">Unlink Account</button>
+                    </form>
+                }
+            }
+            else if (canManageAccounts)
+            {
+                <p class="text-muted">Link an existing active user from . Create the user in Users & Roles first if needed.</p>
+                <form asp-action="LinkUser" method="post" class="row g-2 align-items-end">
+                    <input type="hidden" name="staffId" value="@s.Id" />
+                    <div class="col-md-8">
+                        <label class="form-label">User Account</label>
+                        <select name="userId" class="form-select" required>
+                            <option value="">Select account</option>
+                            @foreach (var user in Model.AvailableUserAccounts)
+                            {
+                                <option value="@user.Id">@user.FullName - @user.Email</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-grid"><button class="btn btn-primary" type="submit">Link Account</button></div>
+                </form>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No user account is linked. Principal/Admin can manage account links.</p>
+            }
+        </div></div>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "payroll" ? "show active" : "")" id="payroll">
+        <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div><h2 class="h5 mb-1">Attendance & Salary</h2><p class="text-muted mb-0">Review attendance, salary, advances and payslips for this staff member.</p></div>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-outline-primary" asp-controller="Payroll" asp-action="SalaryStructure" asp-route-staffId="@s.Id">Salary Setup</a>
+                    <a class="btn btn-outline-primary" asp-controller="Payroll" asp-action="StaffHistory" asp-route-staffId="@s.Id">Salary History</a>
+                    <a class="btn btn-outline-secondary" asp-controller="StaffAttendance" asp-action="Index">Staff Attendance</a>
+                </div>
+            </div>
+            <div><strong>Salary Structure:</strong> @(s.SalaryStructureId.HasValue ? $"Configured (#{s.SalaryStructureId})" : "Not configured")</div>
+        </div></div>
+    </div>
+</div>

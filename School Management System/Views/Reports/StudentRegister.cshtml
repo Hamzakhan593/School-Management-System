@@ -1,0 +1,27 @@
+@model School_Management_System.ViewModels.StudentRegisterReportViewModel
+@{
+    ViewData["Title"] = "Active Student Register";
+}
+<section class="sms-page-head print-hide">
+    <div><div class="sms-eyebrow">Students report</div><h1>Active Student Register</h1><p>@Model.SchoolName · @Model.SessionName · @Model.Rows.Count student(s)</p></div>
+    <div class="sms-head-actions"><button class="btn btn-light sms-btn" type="button" onclick="window.print()">Print</button><a class="btn btn-primary sms-btn" asp-action="StudentRegisterCsv" asp-route-schoolClassId="@Model.SchoolClassId" asp-route-search="@Model.Search">Export CSV</a></div>
+</section>
+
+<section class="sms-panel print-hide mb-4">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4"><label class="form-label">Class</label><select class="form-select" name="schoolClassId"><option value="">All classes</option>@foreach (var item in Model.Classes){<option value="@item.Id" selected="@(Model.SchoolClassId == item.Id ? "selected" : null)">@item.Name</option>}</select></div>
+        <div class="col-md-5"><label class="form-label">Search</label><input class="form-control" name="search" value="@Model.Search" placeholder="Name, admission no or roll no" /></div>
+        <div class="col-md-3 d-flex gap-2"><button class="btn btn-primary flex-grow-1" type="submit">Apply</button><a class="btn btn-light" asp-action="StudentRegister">Reset</a></div>
+    </form>
+</section>
+
+<div class="sms-print-header"><h2>@Model.SchoolName</h2><strong>Active Student Register</strong><span>@Model.SessionName · Generated @Model.GeneratedAt.ToString("dd MMM yyyy HH:mm")</span></div>
+<section class="sms-panel p-0 overflow-hidden">
+    <div class="table-responsive">
+        <table class="table sms-table mb-0"><thead><tr><th>#</th><th>Admission</th><th>Roll No</th><th>Student</th><th>Guardian</th><th>Class</th><th>Section</th><th>Contact</th><th>Status</th></tr></thead><tbody>
+        @if (Model.Rows.Count == 0){<tr><td colspan="9" class="sms-no-data">No students matched the selected filters.</td></tr>}
+        @{ var i = 0; }
+        @foreach (var row in Model.Rows){ i++; <tr><td>@i</td><td><span class="sms-code">@row.AdmissionNumber</span></td><td>@(row.RollNumber ?? "-")</td><td><a class="fw-semibold text-decoration-none" asp-controller="Students" asp-action="Details" asp-route-id="@row.StudentId">@row.StudentName</a></td><td>@row.GuardianName</td><td>@row.ClassName</td><td>@row.SectionName</td><td>@(row.ContactNumber ?? "-")</td><td><span class="sms-status-pill success">@row.Status</span></td></tr>}
+        </tbody></table>
+    </div>
+</section>

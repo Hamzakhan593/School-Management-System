@@ -1,0 +1,17 @@
+@model School_Management_System.ViewModels.ExamFormViewModel
+@{
+    ViewData["Title"] = "Edit Exam";
+}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div><h1 class="h3 mb-1">Edit Exam</h1><p class="text-muted mb-0">Exam setup can be edited while status is Draft.</p></div>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Back</a>
+</div>
+<div class="card shadow-sm"><div class="card-body">
+    <form asp-action="Edit" method="post">
+        @Html.AntiForgeryToken()
+        <input asp-for="Id" type="hidden" />
+        <partial name="_ExamForm" model="Model" />
+        <div class="mt-4"><button class="btn btn-primary">Save Changes</button></div>
+    </form>
+</div></div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

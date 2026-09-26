@@ -1,0 +1,22 @@
+@model School_Management_System.ViewModels.StudentDiscountsViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Student Discounts";
+}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-1">Discounts & Scholarships</h2><div class="text-muted">Fixed or percentage discount, with dates and approval note.</div></div><a class="btn btn-outline-secondary" asp-action="Index">Back to Fees</a></div>
+<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h3 class="h5">@(Model.Form.Id.HasValue?"Edit Discount":"Add Discount")</h3>
+<form asp-action="SaveDiscount" method="post" class="row g-3">@Html.AntiForgeryToken()<input type="hidden" name="Id" value="@Model.Form.Id" />
+<div class="col-md-4"><label class="form-label">Student</label><select class="form-select" name="StudentId"><option value="">-- Select --</option>@foreach(var x in Model.Students){<option value="@x.Id" selected="@(x.Id==Model.Form.StudentId)">@x.Text</option>}</select></div>
+<div class="col-md-4"><label class="form-label">Fee Head</label><select class="form-select" name="FeeHeadId"><option value="">All fee heads</option>@foreach(var x in Model.FeeHeads){<option value="@x.Id" selected="@(x.Id==Model.Form.FeeHeadId)">@x.Text</option>}</select><div class="form-text">A fixed amount with “All” is applied once to the whole challan.</div></div>
+<div class="col-md-2"><label class="form-label">Type</label><select class="form-select" name="DiscountType">@foreach(var f in Enum.GetValues<DiscountType>()){<option value="@((int)f)" selected="@(f==Model.Form.DiscountType)">@f</option>}</select></div>
+<div class="col-md-2"><label class="form-label">Value</label><input class="form-control" type="number" step="0.01" name="Value" value="@Model.Form.Value" /></div>
+<div class="col-md-3"><label class="form-label">Start Date</label><input class="form-control" type="date" name="StartDate" value="@Model.Form.StartDate.ToString("yyyy-MM-dd")" /></div>
+<div class="col-md-3"><label class="form-label">End Date</label><input class="form-control" type="date" name="EndDate" value="@Model.Form.EndDate?.ToString("yyyy-MM-dd")" /></div>
+<div class="col-md-4"><label class="form-label">Approval Note</label><input class="form-control" name="ApprovalNote" value="@Model.Form.ApprovalNote" placeholder="Approved by Principal / scholarship reason" /></div>
+<div class="col-md-2 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@Model.Form.IsActive" /><label class="form-check-label">Active</label></div></div>
+<div class="col-12"><button class="btn btn-primary" type="submit">Save Discount</button>@if(Model.Form.Id.HasValue){<a class="btn btn-link" asp-action="Discounts">Cancel</a>}</div>
+</form></div></div>
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Student</th><th>Fee Head</th><th>Discount</th><th>Dates</th><th>Approval</th><th>Status</th><th></th></tr></thead><tbody>
+@if(Model.Discounts.Count==0){<tr><td colspan="7" class="text-center text-muted py-4">No discounts configured.</td></tr>}
+@foreach(var x in Model.Discounts){<tr><td>@x.Student.FullName</td><td>@(x.FeeHead?.Name??"All")</td><td>@(x.DiscountType==DiscountType.Percentage?$"{x.Value:N2}%":$"PKR {x.Value:N2}")</td><td>@x.StartDate.ToString("dd MMM yyyy") → @(x.EndDate?.ToString("dd MMM yyyy")??"Open")</td><td>@x.ApprovalNote</td><td>@(x.IsActive?"Active":"Inactive")</td><td><a class="btn btn-sm btn-outline-primary" asp-action="Discounts" asp-route-editId="@x.Id">Edit</a></td></tr>}
+</tbody></table></div></div>

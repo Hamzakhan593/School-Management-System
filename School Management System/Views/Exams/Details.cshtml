@@ -1,0 +1,173 @@
+@model School_Management_System.ViewModels.ExamDetailsViewModel
+@{
+    ViewData["Title"] = "Exam Setup";
+    var exam = Model.Exam;
+    var canManage = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.ExamController);
+    var isDraft = exam.Status == ExamStatus.Draft;
+    var configuredKeys = exam.ExamSubjects.Select(x => $"{x.SchoolClassId}:{x.SubjectId}").ToHashSet();
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div>
+        <div class="d-flex gap-2 align-items-center"><h1 class="h3 mb-0">@exam.Title</h1><span class="badge bg-secondary">@exam.Status</span></div>
+        <div class="text-muted mt-1">@exam.AcademicSession.Name · @exam.ExamType · @(exam.Term?.Name ?? "No term") · @exam.StartDate.ToString("dd MMM")–@exam.EndDate.ToString("dd MMM yyyy")</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index" asp-route-sessionId="@exam.AcademicSessionId">All Exams</a>
+        @if (canManage && isDraft) { <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@exam.Id">Edit Exam</a> }
+    </div>
+</div>
+
+@if (canManage && isDraft)
+{
+    <div class="alert alert-info">Finish class and subject setup, then click <strong>Open Marks Entry</strong>. After that, setup is intentionally locked.</div>
+}
+@if (exam.Status == ExamStatus.MarksLocked)
+{
+    <div class="alert alert-success"><strong>complete for this exam:</strong> all expected marks sheets are locked. Result calculation/publication is handled in .</div>
+}
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-5">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <h5>Exam Classes</h5>
+            @if (canManage && isDraft)
+            {
+                <form asp-action="AddClass" method="post" class="d-flex gap-2 mb-3">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="examId" value="@exam.Id" />
+                    <select name="schoolClassId" class="form-select" required>
+                        <option value="">Select class</option>
+                        @foreach (var c in Model.AvailableClasses.Where(c => !exam.ExamClasses.Any(x => x.SchoolClassId == c.Id)))
+                        {
+                            <option value="@c.Id">@c.Name</option>
+                        }
+                    </select>
+                    <button class="btn btn-primary">Assign</button>
+                </form>
+            }
+            @if (!exam.ExamClasses.Any())
+            {
+                <div class="text-muted">No classes assigned yet.</div>
+            }
+            else
+            {
+                <div class="list-group list-group-flush">
+                    @foreach (var item in exam.ExamClasses.OrderBy(x => x.SchoolClass.SortOrder))
+                    {
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center">
+                            <strong>@item.SchoolClass.Name</strong>
+                            @if (canManage && isDraft)
+                            {
+                                <form asp-action="RemoveClass" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@item.Id" /><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div></div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card shadow-sm h-100"><div class="card-body">
+            <h5>Workflow</h5>
+            <div class="small text-muted mb-3">Draft setup → Open marks → Teacher saves draft → Submit → Exam Controller verifies → Locks each sheet → Lock whole exam.</div>
+            @if (canManage && exam.Status == ExamStatus.Draft)
+            {
+                <form asp-action="OpenMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@exam.Id" /><button class="btn btn-primary">Open Marks Entry</button></form>
+            }
+            else if (canManage && exam.Status == ExamStatus.MarksEntryOpen)
+            {
+                <form asp-action="LockExam" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@exam.Id" /><button class="btn btn-warning">Lock Whole Exam</button><div class="form-text">Works only after every expected class/section subject sheet is Locked.</div></form>
+            }
+            else
+            {
+                <span class="badge bg-light text-dark border p-2">Current: @exam.Status</span>
+            }
+        </div></div>
+    </div>
+</div>
+
+@if (canManage && isDraft && exam.ExamClasses.Any())
+{
+    <div class="card shadow-sm mb-4"><div class="card-body">
+        <h5 class="mb-3">Add Exam Subjects from Class-Subject Mapping</h5>
+        @foreach (var map in Model.AvailableClassSubjects.Where(x => !configuredKeys.Contains($"{x.SchoolClassId}:{x.SubjectId}")))
+        {
+            var max = map.MaxMarks ?? map.Subject.DefaultMaxMarks ?? 100m;
+            var pass = map.PassMarks ?? map.Subject.DefaultPassMarks ?? 40m;
+            <form asp-action="AddSubject" method="post" class="border rounded p-3 mb-2">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ExamId" value="@exam.Id" /><input type="hidden" name="SchoolClassId" value="@map.SchoolClassId" /><input type="hidden" name="SubjectId" value="@map.SubjectId" />
+                <div class="row g-2 align-items-end">
+                    <div class="col-lg-3"><div class="fw-semibold">@map.SchoolClass.Name · @map.Subject.Title</div><div class="small text-muted">@map.Subject.Code</div></div>
+                    <div class="col-6 col-lg-1"><label class="form-label small">Max</label><input class="form-control form-control-sm" name="MaxMarks" type="number" step="0.01" min="0.01" value="@max" required /></div>
+                    <div class="col-6 col-lg-1"><label class="form-label small">Pass</label><input class="form-control form-control-sm" name="PassMarks" type="number" step="0.01" min="0" value="@pass" required /></div>
+                    <div class="col-6 col-lg-2"><label class="form-label small">Theory Max</label><input class="form-control form-control-sm" name="TheoryMaxMarks" type="number" step="0.01" min="0" value="@(map.Subject.HasTheory && !map.Subject.HasPractical ? max : null)" /></div>
+                    <div class="col-6 col-lg-2"><label class="form-label small">Practical Max</label><input class="form-control form-control-sm" name="PracticalMaxMarks" type="number" step="0.01" min="0" value="@(map.Subject.HasPractical && !map.Subject.HasTheory ? max : null)" /></div>
+                    <div class="col-6 col-lg-2"><label class="form-label small">Weight %</label><input class="form-control form-control-sm" name="WeightagePercent" type="number" step="0.01" min="0.01" value="100" required /></div>
+                    <div class="col-6 col-lg-1"><button class="btn btn-sm btn-primary w-100">Add</button></div>
+                </div>
+            </form>
+        }
+        <div class="form-text">For subjects with both theory and practical, enter component maximums so their sum equals Total Max. Leave both blank to use one combined marks field.</div>
+    </div></div>
+}
+
+<div class="card shadow-sm mb-4"><div class="card-body">
+    <h5 class="mb-3">Configured Exam Subjects</h5>
+    @if (!exam.ExamSubjects.Any())
+    {
+        <div class="text-muted">No exam subjects configured yet.</div>
+    }
+    else
+    {
+        <div class="table-responsive"><table class="table align-middle">
+            <thead><tr><th>Class</th><th>Subject</th><th>Marks Setup</th><th>Sheets</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var s in exam.ExamSubjects.OrderBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.Subject.Title))
+            {
+                var sheets = Model.MarksSheets.Where(x => x.ExamSubjectId == s.Id).ToList();
+                <tr>
+                    <td>@s.SchoolClass.Name</td><td><strong>@s.Subject.Title</strong><div class="small text-muted">@s.Subject.Code</div></td>
+                    <td>
+                        @if (canManage && isDraft)
+                        {
+                            <form asp-action="UpdateSubject" method="post" class="d-flex flex-wrap gap-1 align-items-center">
+                                @Html.AntiForgeryToken()<input type="hidden" name="id" value="@s.Id" />
+                                <input title="Max" class="form-control form-control-sm" style="width:75px" name="maxMarks" type="number" step="0.01" value="@s.MaxMarks" />
+                                <input title="Pass" class="form-control form-control-sm" style="width:75px" name="passMarks" type="number" step="0.01" value="@s.PassMarks" />
+                                <input title="Theory max" class="form-control form-control-sm" style="width:75px" name="theoryMaxMarks" type="number" step="0.01" value="@s.TheoryMaxMarks" placeholder="T" />
+                                <input title="Practical max" class="form-control form-control-sm" style="width:75px" name="practicalMaxMarks" type="number" step="0.01" value="@s.PracticalMaxMarks" placeholder="P" />
+                                <input title="Weight %" class="form-control form-control-sm" style="width:75px" name="weightagePercent" type="number" step="0.01" value="@s.WeightagePercent" />
+                                <button class="btn btn-sm btn-outline-primary">Save</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span>Max @s.MaxMarks · Pass @s.PassMarks · Weight @s.WeightagePercent%</span>
+                            @if (s.TheoryMaxMarks.HasValue || s.PracticalMaxMarks.HasValue) { <div class="small text-muted">Theory @(s.TheoryMaxMarks?.ToString("0.##") ?? "-") / Practical @(s.PracticalMaxMarks?.ToString("0.##") ?? "-")</div> }
+                        }
+                    </td>
+                    <td>
+                        @if (!sheets.Any()) { <span class="text-muted">Not started</span> }
+                        else
+                        {
+                            @foreach (var sh in sheets.OrderBy(x => x.Section?.Name)) { <span class="badge bg-light text-dark border me-1">@(sh.Section?.Name ?? "Class") · @sh.Status</span> }
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (exam.Status != ExamStatus.Draft)
+                        {
+                            <a class="btn btn-sm btn-primary" asp-action="Marks" asp-route-examSubjectId="@s.Id">Enter / Review Marks</a>
+                        }
+                        @if (canManage && isDraft)
+                        {
+                            <form asp-action="RemoveSubject" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@s.Id" /><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table></div>
+    }
+</div></div>

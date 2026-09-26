@@ -15,6 +15,91 @@
        asp-route-sectionId="@Model.SectionId">Monthly Report</a>
 </div>
 
+<details class="workspace-subsection"><summary>Camera, biometric & attendance reports</summary><!-- Attendance method shortcuts: keep all attendance options visible inside the Attendance module -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white border-0 pt-3 px-3">
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+            <div>
+                <h5 class="mb-1">Attendance Methods</h5>
+                <div class="text-muted small">Choose how you want to record or review student attendance.</div>
+            </div>
+            <span class="badge text-bg-light border">Student Attendance</span>
+        </div>
+    </div>
+    <div class="card-body pt-2">
+        <div class="row g-3">
+            <div class="col-xl-3 col-md-6">
+                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                            <div class="fw-semibold fs-5">Manual Attendance</div>
+                            <div class="text-muted small">Mark class/section attendance from the roster below.</div>
+                        </div>
+                        <span class="badge text-bg-primary">Daily</span>
+                    </div>
+                    <a class="btn btn-primary btn-sm mt-2" asp-controller="Attendance" asp-action="Index">Open Manual Attendance</a>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                            <div class="fw-semibold fs-5">Camera Attendance</div>
+                            <div class="text-muted small">Use a webcam/mobile camera with manual verification fallback.</div>
+                        </div>
+                        <span class="badge text-bg-success">Camera</span>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <a class="btn btn-success btn-sm" asp-controller="CameraAttendance" asp-action="Index">Open Camera</a>
+                        @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+                        {
+                            <a class="btn btn-outline-success btn-sm" asp-controller="CameraAttendance" asp-action="Enroll">Face Enrollment</a>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                            <div class="fw-semibold fs-5">Biometric Attendance</div>
+                            <div class="text-muted small">Manage biometric devices, student enrollment and incoming scan events.</div>
+                        </div>
+                        <span class="badge text-bg-warning">Device</span>
+                    </div>
+                    @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+                    {
+                        <a class="btn btn-warning btn-sm mt-2" asp-controller="AttendanceIntegrations" asp-action="Index">Devices &amp; Scan Events</a>
+                    }
+                    else
+                    {
+                        <div class="small text-muted mt-2">Device setup is available to authorized administration users.</div>
+                    }
+                </div>
+            </div>
+
+            <div class="col-xl-3 col-md-6">
+                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
+                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
+                        <div>
+                            <div class="fw-semibold fs-5">Attendance Reports</div>
+                            <div class="text-muted small">View monthly percentages, absences and attendance history.</div>
+                        </div>
+                        <span class="badge text-bg-info">Report</span>
+                    </div>
+                    <a class="btn btn-outline-primary btn-sm mt-2" asp-controller="Attendance" asp-action="MonthlyReport"
+                       asp-route-academicSessionId="@Model.AcademicSessionId"
+                       asp-route-schoolClassId="@(Model.SchoolClassId > 0 ? Model.SchoolClassId : null)"
+                       asp-route-sectionId="@Model.SectionId">Monthly Report</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</details>
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
         <form method="get" asp-action="Index" class="row g-3 align-items-end">
@@ -41,9 +126,9 @@
                 <label class="form-label">Section</label>
                 <select class="form-select" name="sectionId">
                     <option value="">@(Model.Sections.Count > 0 ? "-- Select section --" : "No section")</option>
-                    @foreach (var section in Model.Sections)
+                    @foreach (var sec in Model.Sections)
                     {
-                        <option value="@section.Id" selected="@(section.Id == Model.SectionId)">@section.Name</option>
+                        <option value="@sec.Id" selected="@(sec.Id == Model.SectionId)">@sec.Name</option>
                     }
                 </select>
             </div>
@@ -87,7 +172,9 @@
         }
     </div>
 
+    <div id="attendanceProgress" class="workspace-roster-status" aria-live="polite"></div>
     <form method="post" asp-action="Save">
+        <div asp-validation-summary="All" class="text-danger"></div>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="AcademicSessionId" />
         <input type="hidden" asp-for="SchoolClassId" />
@@ -138,7 +225,20 @@
                                 <small class="text-muted">Roll: @(Model.Students[i].RollNumber ?? "-")</small>
                             </td>
                             <td>
-                                <select asp-for="Students[i].Status" asp-items="Html.GetEnumSelectList<StudentAttendanceStatus>()" class="form-select attendance-status" disabled="@(!Model.CanEdit)"></select>
+                                <select asp-for="Students[i].Status" aria-label="Attendance for @Model.Students[i].StudentName" class="form-select attendance-status" disabled="@(!Model.CanEdit)">
+                                    <option value="0">Unmarked — choose status</option>
+                                    @foreach (var status in Model.AllowedStatuses)
+                                    {
+                                        if (Model.Students[i].Status == status)
+                                        {
+                                            <option value="@((int)status)" selected>@status</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="@((int)status)">@status</option>
+                                        }
+                                    }
+                                </select>
                                 @if (!Model.CanEdit)
                                 {
                                     <input type="hidden" asp-for="Students[i].Status" />
@@ -175,9 +275,9 @@ else if (Model.SchoolClassId > 0 && (Model.Sections.Count == 0 || Model.SectionI
 <script>
     (() => {
         const setAll = (value) => {
-            document.querySelectorAll('.attendance-status:not(:disabled)').forEach(x => x.value = value);
+            document.querySelectorAll('.attendance-status:not(:disabled)').forEach(x => { x.value = value; x.dispatchEvent(new Event("change")); });
         };
-        document.getElementById('markAllPresent')?.addEventListener('click', () => setAll('@((int)StudentAttendanceStatus.Present)'));
+        document.getElementById('markAllPresent')?.addEventListener('click', () => { if (confirm("Mark every student in this roster Present? Review absences before saving.")) setAll('@((int)StudentAttendanceStatus.Present)'); });
         document.getElementById('markAllNoClass')?.addEventListener('click', () => setAll('@((int)StudentAttendanceStatus.NoClass)'));
     })();
 </script>

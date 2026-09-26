@@ -1,0 +1,49 @@
+@model School_Management_System.ViewModels.NoticeFormViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Edit Notice" : "New Notice";
+}
+
+<section class="sms-page-head">
+    <div><div class="sms-eyebrow">Communication</div><h1>@ViewData["Title"]</h1><p>Create a targeted announcement with an optional attachment and visibility window.</p></div>
+    <a class="btn btn-outline-secondary sms-btn" asp-action="Manage">Back</a>
+</section>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body p-4 p-lg-5">
+        <form asp-action="SaveNotice" method="post" enctype="multipart/form-data" novalidate>
+            @Html.AntiForgeryToken()
+            <input asp-for="Id" type="hidden" />
+            <input asp-for="RowVersion" type="hidden" />
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="row g-3">
+                <div class="col-12"><label asp-for="Title" class="form-label fw-semibold"></label><input asp-for="Title" class="form-control form-control-lg" /><span asp-validation-for="Title" class="text-danger"></span></div>
+                <div class="col-12"><label asp-for="Body" class="form-label fw-semibold"></label><textarea asp-for="Body" class="form-control" rows="8"></textarea><span asp-validation-for="Body" class="text-danger"></span></div>
+                <div class="col-md-4"><label asp-for="Audience" class="form-label fw-semibold"></label><select asp-for="Audience" asp-items="Html.GetEnumSelectList<NoticeAudience>()" class="form-select" id="audienceSelect"></select></div>
+                <div class="col-md-4 class-target"><label asp-for="SchoolClassId" class="form-label fw-semibold">Class</label><select asp-for="SchoolClassId" class="form-select" id="classSelect"><option value="">Select class</option>@foreach(var x in Model.Classes){<option value="@x.Id">@x.Name</option>}</select><span asp-validation-for="SchoolClassId" class="text-danger"></span></div>
+                <div class="col-md-4 class-target"><label asp-for="SectionId" class="form-label fw-semibold">Section (optional)</label><select asp-for="SectionId" class="form-select" id="sectionSelect"><option value="">All sections</option>@foreach(var x in Model.Sections){<option value="@x.Id" data-class="@x.ParentId">@x.Name</option>}</select><span asp-validation-for="SectionId" class="text-danger"></span></div>
+                <div class="col-md-6"><label asp-for="PublishFromLocal" class="form-label fw-semibold"></label><input asp-for="PublishFromLocal" type="datetime-local" class="form-control" /></div>
+                <div class="col-md-6"><label asp-for="PublishUntilLocal" class="form-label fw-semibold"></label><input asp-for="PublishUntilLocal" type="datetime-local" class="form-control" /></div>
+                <div class="col-12"><label asp-for="Attachment" class="form-label fw-semibold"></label><input asp-for="Attachment" class="form-control" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png" /><div class="form-text">Maximum 10 MB. PDF, Office documents and common images are allowed.</div><span asp-validation-for="Attachment" class="text-danger"></span></div>
+                @if (!string.IsNullOrWhiteSpace(Model.ExistingAttachmentName))
+                {
+                    <div class="col-12"><div class="form-check"><input asp-for="RemoveExistingAttachment" class="form-check-input" /><label asp-for="RemoveExistingAttachment" class="form-check-label">Remove existing attachment: <strong>@Model.ExistingAttachmentName</strong></label></div></div>
+                }
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4"><a class="btn btn-outline-secondary" asp-action="Manage">Cancel</a><button class="btn btn-primary px-4">Save Notice</button></div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+(function(){
+ const audience=document.getElementById('audienceSelect'), cls=document.getElementById('classSelect'), sec=document.getElementById('sectionSelect');
+ const blocks=[...document.querySelectorAll('.class-target')];
+ function toggle(){ const on=audience.value==='4'; blocks.forEach(x=>x.style.display=on?'':'none'); if(!on){cls.value='';sec.value='';} filter(); }
+ function filter(){ const c=cls.value; [...sec.options].forEach((o,i)=>{ if(i===0) return; o.hidden=!!c && o.dataset.class!==c; }); if(sec.selectedOptions[0]?.hidden) sec.value=''; }
+ audience.addEventListener('change',toggle); cls.addEventListener('change',filter); toggle();
+})();
+</script>
+}

@@ -1,0 +1,86 @@
+@model School_Management_System.ViewModels.StaffIndexViewModel
+@{
+    ViewData["Title"] = "Staff / HR";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Staff / HR</h1><p class="text-muted mb-0">Employee profiles, documents, employment status and teacher-account links.</p></div>
+    <a class="btn btn-primary" asp-action="Create">+ Add Staff</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Staff</div><div class="display-6 fw-semibold">@Model.TotalStaff</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Active / On Leave</div><div class="display-6 fw-semibold">@Model.ActiveStaff</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Linked Teacher Accounts</div><div class="display-6 fw-semibold">@Model.TeachingStaff</div></div></div></div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label">Search</label>
+                <input class="form-control" name="q" value="@Model.Query" placeholder="Name, employee ID, CNIC, phone, designation" />
+            </div>
+            <div class="col-md-2">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<StaffStatus>()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label asp-for="EmploymentType" class="form-label">Employment</label>
+                <select asp-for="EmploymentType" class="form-select" asp-items="Html.GetEnumSelectList<StaffEmploymentType>()">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Department</label>
+                <select class="form-select" name="department">
+                    <option value="">All</option>
+                    @foreach (var item in Model.Departments)
+                    {
+                        if (Model.Department == item)
+                        {
+                            <option value="@item" selected>@item</option>
+                        }
+                        else
+                        {
+                            <option value="@item">@item</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-grid"><button class="btn btn-outline-primary" type="submit">Filter</button></div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Employee</th><th>Designation</th><th>Department</th><th>Employment</th><th>Status</th><th>Joined</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.StaffMembers.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-5">No staff records found.</td></tr>
+            }
+            else
+            {
+                @foreach (var item in Model.StaffMembers)
+                {
+                    var active = item.Status == StaffStatus.Active || item.Status == StaffStatus.OnLeave;
+                    <tr>
+                        <td><strong>@item.FullName</strong><div class="small text-muted">@item.EmployeeId · @(item.Phone ?? "No phone")</div></td>
+                        <td>@item.Designation</td>
+                        <td>@(item.Department ?? "—")</td>
+                        <td>@item.EmploymentType</td>
+                        <td><span class="badge text-bg-@(active ? "success" : "secondary")">@item.Status</span></td>
+                        <td>@item.JoiningDate.ToString("dd MMM yyyy")</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.Id">Open</a></td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

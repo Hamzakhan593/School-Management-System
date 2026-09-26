@@ -1,0 +1,52 @@
+@model School_Management_System.ViewModels.ExamFormViewModel
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="AcademicSessionId" class="form-label">Academic Session</label>
+        <select asp-for="AcademicSessionId" class="form-select">
+            @foreach (var session in Model.Sessions)
+            {
+                <option value="@session.Id">@session.Name</option>
+            }
+        </select>
+        <span asp-validation-for="AcademicSessionId" class="text-danger"></span>
+        <div class="form-text">If you change the session, save without a term first, then edit to select a term from that session.</div>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="TermId" class="form-label">Term / Semester (optional)</label>
+        <select asp-for="TermId" class="form-select">
+            <option value="">No term</option>
+            @foreach (var term in Model.Terms)
+            {
+                <option value="@term.Id">@term.Name</option>
+            }
+        </select>
+        <span asp-validation-for="TermId" class="text-danger"></span>
+    </div>
+    <div class="col-md-7">
+        <label asp-for="Title" class="form-label"></label>
+        <input asp-for="Title" class="form-control" placeholder="e.g. Mid Term Examination 2026" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+    <div class="col-md-5">
+        <label asp-for="ExamType" class="form-label">Exam Type</label>
+        <input asp-for="ExamType" class="form-control" placeholder="Mid Term / Final / Monthly Test" />
+        <span asp-validation-for="ExamType" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="StartDate" class="form-label"></label>
+        <input asp-for="StartDate" class="form-control" />
+        <span asp-validation-for="StartDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="EndDate" class="form-label"></label>
+        <input asp-for="EndDate" class="form-control" />
+        <span asp-validation-for="EndDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check mb-2">
+            <input asp-for="IsActive" class="form-check-input" />
+            <label asp-for="IsActive" class="form-check-label">Active exam</label>
+        </div>
+    </div>
+</div>

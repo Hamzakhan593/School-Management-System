@@ -1,0 +1,107 @@
+@model School_Management_System.ViewModels.ResultCardViewModel
+@inject School_Management_System.Services.ISystemSettingsService SettingsService
+@{
+    ViewData["Title"] = "Result Card";
+    var printSettings = await SettingsService.GetAsync(Model.School.Id);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Result Card</h2>
+        <div class="text-muted">@Model.Exam.Title · Version @Model.Result.VersionNumber</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="javascript:history.back()" class="btn btn-outline-secondary">Back</a>
+        <a asp-action="ResultCardPdf" asp-route-examId="@Model.Exam.Id" asp-route-studentId="@Model.Student.Id" class="btn btn-primary">Download PDF</a>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4">
+        <div class="text-center mb-4">
+            @if (!string.IsNullOrWhiteSpace(Model.School.LogoPath))
+            {
+                <img src="@Model.School.LogoPath" alt="School logo" style="max-height:80px" class="mb-2" />
+            }
+            <h3 class="mb-0">@Model.School.Name</h3>
+            <div class="text-muted">@Model.School.Address</div>
+            <h4 class="mt-3">@Model.Exam.Title — Result Card</h4>
+        </div>
+
+        <div class="row mb-3">
+            <div class="col-md-6"><strong>Student:</strong> @Model.Student.FullName</div>
+            <div class="col-md-6"><strong>Admission No:</strong> @Model.Student.AdmissionNumber</div>
+            <div class="col-md-6"><strong>Class:</strong> @Model.Enrollment.ClassName</div>
+            <div class="col-md-6"><strong>Section / Roll:</strong> @(Model.Enrollment.SectionName ?? "-") / @(Model.Enrollment.RollNumber ?? Model.Student.RollNumber ?? "-")</div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light"><tr><th>Subject</th><th>Max</th><th>Pass</th><th>Obtained</th><th>Status</th></tr></thead>
+                <tbody>
+                @foreach (var subject in Model.Subjects)
+                {
+                    <tr>
+                        <td>@subject.Subject</td><td>@subject.MaximumMarks.ToString("0.##")</td><td>@subject.PassMarks.ToString("0.##")</td>
+                        <td>@(subject.SpecialStatus == MarkSpecialStatus.Absent ? "Absent" : subject.SpecialStatus == MarkSpecialStatus.Exempt ? "Exempt" : subject.ObtainedMarks?.ToString("0.##") ?? "-")</td>
+                        <td>@(subject.SpecialStatus == MarkSpecialStatus.Exempt ? "EXEMPT" : subject.Passed ? "PASS" : "FAIL")</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row g-3 mt-1">
+            <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Total</div><strong>@Model.Result.ObtainedMarks.ToString("0.##") / @Model.Result.MaximumMarks.ToString("0.##")</strong></div></div>
+            <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Percentage</div><strong>@Model.Result.Percentage.ToString("0.00")%</strong></div></div>
+            <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Grade</div><strong>@Model.Result.Grade</strong></div></div>
+            @if (printSettings.ResultCardShowClassPosition)
+            {
+                <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Position</div><strong>@(Model.Result.ClassPosition?.ToString() ?? "-")</strong></div></div>
+            }
+            @if (printSettings.ResultCardShowAttendance)
+            {
+                <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Attendance</div><strong>@(Model.Result.AttendancePercentage.HasValue ? Model.Result.AttendancePercentage.Value.ToString("0.00") + "%" : "-")</strong></div></div>
+            }
+        </div>
+
+        <div class="alert @(Model.Result.IsPassed ? "alert-success" : "alert-danger") mt-4"><strong>Final Result: @(Model.Result.IsPassed ? "PASS" : "FAIL")</strong></div>
+        @if (!string.IsNullOrWhiteSpace(Model.Result.TeacherRemarks))
+        {
+            <p><strong>Teacher Remarks:</strong> @Model.Result.TeacherRemarks</p>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Result.CorrectionReason))
+        {
+            <p class="text-muted"><strong>Correction Note:</strong> @Model.Result.CorrectionReason</p>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(printSettings.ResultCardFooterText))
+        {
+            <div class="text-center text-muted small mt-4">@printSettings.ResultCardFooterText</div>
+        }
+        <div class="row mt-5 text-center align-items-end">
+            <div class="col-6">
+                @if (!string.IsNullOrWhiteSpace(printSettings.ClassTeacherSignaturePath))
+                {
+                    <img src="@printSettings.ClassTeacherSignaturePath" alt="Class teacher signature" style="max-height:55px;max-width:180px" class="d-block mx-auto mb-1" />
+                }
+                else
+                {
+                    <div>_________________________</div>
+                }
+                <div>@printSettings.ClassTeacherSignatureLabel</div>
+            </div>
+            <div class="col-6">
+                @if (!string.IsNullOrWhiteSpace(printSettings.PrincipalSignaturePath))
+                {
+                    <img src="@printSettings.PrincipalSignaturePath" alt="Principal signature" style="max-height:55px;max-width:180px" class="d-block mx-auto mb-1" />
+                }
+                else
+                {
+                    <div>_________________________</div>
+                }
+                <div>@printSettings.PrincipalSignatureLabel @(string.IsNullOrWhiteSpace(Model.School.PrincipalName) ? "" : "(" + Model.School.PrincipalName + ")")</div>
+            </div>
+        </div>
+    </div>
+</div>

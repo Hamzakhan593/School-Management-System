@@ -1,0 +1,23 @@
+@model School_Management_System.ViewModels.StaffFormViewModel
+@{
+    ViewData["Title"] = "Edit Staff";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div><h1 class="h3 mb-1">Edit Staff Profile</h1><p class="text-muted mb-0">Update employment and contact information without losing history.</p></div>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Back to Profile</a>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-lg-4">
+        <form method="post">
+            <partial name="_StaffForm" model="Model" />
+            <div class="d-flex gap-2 mt-4">
+                <button class="btn btn-primary" type="submit">Save Changes</button>
+                <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

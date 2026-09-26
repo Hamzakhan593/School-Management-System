@@ -1,0 +1,73 @@
+@model School_Management_System.ViewModels.ExpenseCategoriesViewModel
+@{
+    ViewData["Title"] = "Expense Categories";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Expense Categories</h2>
+        <div class="text-muted">Utilities, Maintenance, Stationery, Transport, Rent, Internet, Cleaning, Events and custom categories.</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to Expenses</a>
+</div>
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card shadow-sm">
+            <div class="card-header fw-semibold">@(Model.Form.Id.HasValue ? "Edit Category" : "New Category")</div>
+            <div class="card-body">
+                <form asp-action="SaveCategory" method="post">
+                    <input asp-for="Form.Id" name="Id" type="hidden" />
+                    <div class="mb-3">
+                        <label class="form-label">Name</label>
+                        <input asp-for="Form.Name" name="Name" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description</label>
+                        <textarea asp-for="Form.Description" name="Description" class="form-control" rows="3"></textarea>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label">Sort Order</label>
+                            <input asp-for="Form.SortOrder" name="SortOrder" class="form-control" />
+                        </div>
+                        <div class="col-6 d-flex align-items-end pb-2">
+                            <div class="form-check">
+                                <input asp-for="Form.IsActive" name="IsActive" class="form-check-input" />
+                                <label class="form-check-label">Active</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary mt-3" type="submit">Save Category</button>
+                    @if (Model.Form.Id.HasValue)
+                    {
+                        <a asp-action="Categories" class="btn btn-outline-secondary mt-3">Cancel Edit</a>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light"><tr><th>Name</th><th>Description</th><th>Order</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var item in Model.Categories)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@item.Name</td>
+                            <td>@item.Description</td>
+                            <td>@item.SortOrder</td>
+                            <td><span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                            <td class="text-end"><a asp-action="Categories" asp-route-editId="@item.Id" class="btn btn-sm btn-outline-primary">Edit</a></td>
+                        </tr>
+                    }
+                    @if (Model.Categories.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted py-4">No expense categories yet.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

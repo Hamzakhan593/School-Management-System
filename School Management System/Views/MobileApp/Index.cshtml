@@ -1,0 +1,111 @@
+@{
+    ViewData["Title"] = "Mobile App & Offline";
+    var canUseCamera = User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("Teacher");
+}
+
+<div class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">Progressive Web App</div>
+        <h1>School app on phone, tablet and desktop</h1>
+        <p>Install the same secure school system to the home screen. No separate Android codebase is required.</p>
+    </div>
+    <div class="sms-head-actions">
+        <button type="button" class="btn btn-primary sms-btn" data-pwa-install-manual>
+            <svg class="pwa-inline-icon"><use href="#i-install"></use></svg> Install App
+        </button>
+    </div>
+</div>
+
+<div class="pwa-hero-grid">
+    <section class="sms-panel pwa-install-card">
+        <div class="pwa-phone-visual" aria-hidden="true">
+            <div class="pwa-phone-speaker"></div>
+            <div class="pwa-phone-screen">
+                <div class="pwa-mini-brand">SM</div>
+                <strong>School Management</strong>
+                <small>Dashboard • Attendance • Fees • Results</small>
+                <div class="pwa-mini-grid"><i></i><i></i><i></i><i></i></div>
+            </div>
+        </div>
+        <div>
+            <div class="sms-panel-kicker">Install once</div>
+            <h2 class="pwa-card-title">Feels like an app, stays one system</h2>
+            <p class="pwa-copy">After installation the system opens in its own app-style window with the school icon. Updates still come from the same ASP.NET Core application, so staff do not need a second mobile application.</p>
+            <div class="pwa-check-list">
+                <span><b>✓</b> Home-screen icon and standalone launch</span>
+                <span><b>✓</b> Responsive sidebar becomes a mobile drawer</span>
+                <span><b>✓</b> Camera workflows can use the phone camera when authorized</span>
+                <span><b>✓</b> HTTPS-ready service worker and safe offline shell</span>
+            </div>
+        </div>
+    </section>
+
+    <section class="sms-panel">
+        <div class="sms-panel-head compact">
+            <div><div class="sms-panel-kicker">Device diagnostics</div><h2>This device</h2></div>
+            <span class="sms-status-pill" data-pwa-diag="overall">Checking…</span>
+        </div>
+        <div class="pwa-diagnostic-list">
+            <div><span>Connection</span><strong data-pwa-diag="connection">Checking…</strong></div>
+            <div><span>Secure context (HTTPS)</span><strong data-pwa-diag="secure">Checking…</strong></div>
+            <div><span>Service worker</span><strong data-pwa-diag="worker">Checking…</strong></div>
+            <div><span>Installed / standalone</span><strong data-pwa-diag="standalone">Checking…</strong></div>
+            <div><span>Camera API</span><strong data-pwa-diag="camera">Checking…</strong></div>
+        </div>
+        <p class="pwa-note mb-0">For production installation, use HTTPS. Localhost is allowed for development testing.</p>
+    </section>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-xl-7">
+        <section class="sms-panel h-100">
+            <div class="sms-panel-head">
+                <div><div class="sms-panel-kicker">Offline safety</div><h2>What works when internet drops?</h2><p>The design prefers data safety over pretending that a save succeeded.</p></div>
+            </div>
+            <div class="pwa-offline-grid">
+                <div class="pwa-safe-card safe">
+                    <strong>Available offline</strong>
+                    <p>The application shell, branding, navigation styling and this offline guidance can load from the device cache.</p>
+                </div>
+                <div class="pwa-safe-card cautious">
+                    <strong>Requires server confirmation</strong>
+                    <p>Attendance submission, fee/payment posting, result publishing, payroll posting, promotion and restore actions are never silently queued.</p>
+                </div>
+            </div>
+            <div class="pwa-rule-box">
+                <svg><use href="#i-wifi-off"></use></svg>
+                <div><strong>Offline changes are blocked.</strong><span>If a staff member submits a write form while offline, the browser keeps the user on the page and shows a warning instead of reporting false success.</span></div>
+            </div>
+        </section>
+    </div>
+    <div class="col-xl-5">
+        <section class="sms-panel h-100">
+            <div class="sms-panel-head"><div><div class="sms-panel-kicker">Install guide</div><h2>Supported install paths</h2></div></div>
+            <div class="pwa-step-list">
+                <div><span>1</span><p><strong>Android / Chrome / Edge</strong>Use the Install App button when it appears, or the browser menu → Install app.</p></div>
+                <div><span>2</span><p><strong>iPhone / iPad (Safari)</strong>Tap Share → Add to Home Screen → Add.</p></div>
+                <div><span>3</span><p><strong>Desktop Chrome / Edge</strong>Use the install icon in the address bar or the Install App button.</p></div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    @if (canUseCamera)
+    {
+        <div class="col-md-6">
+            <a class="pwa-link-card" asp-controller="CameraAttendance" asp-action="Index">
+                <span class="pwa-link-icon"><svg><use href="#i-attendance"></use></svg></span>
+                <span><strong>Camera Attendance</strong><small>Open the authorized camera attendance workflow.</small></span>
+                <svg class="pwa-chevron"><use href="#i-chevron"></use></svg>
+            </a>
+        </div>
+    }
+    <div class="@(canUseCamera ? "col-md-6" : "col-12")">
+        <a class="pwa-link-card" asp-controller="Dashboard" asp-action="Index">
+            <span class="pwa-link-icon"><svg><use href="#i-dashboard"></use></svg></span>
+            <span><strong>Back to Dashboard</strong><small>Continue working in the responsive school dashboard.</small></span>
+            <svg class="pwa-chevron"><use href="#i-chevron"></use></svg>
+        </a>
+    </div>
+</div>

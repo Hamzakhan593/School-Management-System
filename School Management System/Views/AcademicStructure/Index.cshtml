@@ -30,7 +30,7 @@
 @if (Model.LegacyPlacementsUnmapped > 0 && canManage)
 {
     <div class="alert alert-warning d-flex flex-wrap justify-content-between align-items-center gap-2">
-        <div><strong>@Model.LegacyPlacementsUnmapped</strong> older student placement row(s) still use M03/M04 text class names.</div>
+        <div><strong>@Model.LegacyPlacementsUnmapped</strong> older student placement row(s) still use text class names.</div>
         <form asp-action="MapLegacyPlacements" method="post">
             @Html.AntiForgeryToken()
             <button type="submit" class="btn btn-sm btn-warning">Map matching legacy placements</button>
@@ -40,14 +40,14 @@
 
 @if (canManage)
 {
-    <div class="row g-3 mb-4">
+    <details class="workspace-subsection"><summary>Add a class, section or group</summary><div class="row g-3 mb-4">
         <div class="col-lg-4">
             <div class="card shadow-sm h-100"><div class="card-body">
                 <h5>Create Class</h5>
                 <form asp-action="CreateClass" method="post" class="row g-2">
-                    <div class="col-12"><input name="Name" class="form-control" placeholder="Class name e.g. Grade 6" required /></div>
-                    <div class="col-6"><input name="Code" class="form-control" placeholder="Code e.g. G6" /></div>
-                    <div class="col-6"><input name="SortOrder" type="number" class="form-control" value="0" placeholder="Sort order" /></div>
+                    <div class="col-12"><label class="form-label" for="academic-1">Name</label><input id="academic-1" name="Name" class="form-control" placeholder="Class name e.g. Grade 6" required /></div>
+                    <div class="col-6"><label class="form-label" for="academic-2">Code</label><input id="academic-2" name="Code" class="form-control" placeholder="Code e.g. G6" /></div>
+                    <div class="col-6"><label class="form-label" for="academic-3">Display order</label><input id="academic-3" name="SortOrder" type="number" class="form-control" value="0" placeholder="Sort order" /></div>
                     <input type="hidden" name="IsActive" value="true" />
                     <div class="col-12"><button class="btn btn-primary w-100">Add Class</button></div>
                 </form>
@@ -57,11 +57,11 @@
             <div class="card shadow-sm h-100"><div class="card-body">
                 <h5>Create Section</h5>
                 <form asp-action="CreateSection" method="post" class="row g-2">
-                    <div class="col-12"><select name="SchoolClassId" class="form-select" required><option value="">Select class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
-                    <div class="col-6"><input name="Name" class="form-control" placeholder="Section e.g. A" required /></div>
-                    <div class="col-6"><input name="Capacity" type="number" min="1" class="form-control" value="40" /></div>
-                    <div class="col-6"><input name="Classroom" class="form-control" placeholder="Room" /></div>
-                    <div class="col-6"><select name="ClassTeacherUserId" class="form-select"><option value="">No class teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@t.FullName</option> }</select></div>
+                    <div class="col-12"><label class="form-label" for="academic-4">Class</label><select id="academic-4" name="SchoolClassId" class="form-select" required><option value="">Select class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
+                    <div class="col-6"><label class="form-label" for="academic-5">Name</label><input id="academic-5" name="Name" class="form-control" placeholder="Section e.g. A" required /></div>
+                    <div class="col-6"><label class="form-label" for="academic-6">Capacity</label><input id="academic-6" name="Capacity" type="number" min="1" class="form-control" value="40" /></div>
+                    <div class="col-6"><label class="form-label" for="academic-7">Classroom</label><input id="academic-7" name="Classroom" class="form-control" placeholder="Room" /></div>
+                    <div class="col-6"><label class="form-label" for="academic-8">Class teacher</label><select id="academic-8" name="ClassTeacherUserId" class="form-select"><option value="">No class teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@t.FullName</option> }</select></div>
                     <input type="hidden" name="IsActive" value="true" />
                     <div class="col-12"><button class="btn btn-primary w-100">Add Section</button></div>
                 </form>
@@ -71,9 +71,9 @@
             <div class="card shadow-sm h-100"><div class="card-body">
                 <h5>Create Group / Stream</h5>
                 <form asp-action="CreateGroup" method="post" class="row g-2">
-                    <div class="col-12"><select name="SchoolClassId" class="form-select" required><option value="">Select class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
-                    <div class="col-12"><input name="Name" class="form-control" placeholder="Science / Arts / Computer" required /></div>
-                    <div class="col-12"><input name="Description" class="form-control" placeholder="Optional description" /></div>
+                    <div class="col-12"><label class="form-label" for="academic-9">Class</label><select id="academic-9" name="SchoolClassId" class="form-select" required><option value="">Select class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
+                    <div class="col-12"><label class="form-label" for="academic-10">Name</label><input id="academic-10" name="Name" class="form-control" placeholder="Science / Arts / Computer" required /></div>
+                    <div class="col-12"><label class="form-label" for="academic-11">Description</label><input id="academic-11" name="Description" class="form-control" placeholder="Optional description" /></div>
                     <input type="hidden" name="IsActive" value="true" />
                     <div class="col-12"><button class="btn btn-primary w-100">Add Group</button></div>
                 </form>
@@ -96,6 +96,7 @@
             <div class="col-md-1"><button class="btn btn-primary w-100">Add</button></div>
         </form>
     </div></div>
+    </details>
 }
 
 <div class="row g-4 mb-4">
@@ -163,10 +164,10 @@
                 {
                     <form asp-action="AssignSubject" method="post" class="row g-2 mb-3">
                         <input type="hidden" name="AcademicSessionId" value="@Model.SelectedSessionId" />
-                        <div class="col-md-3"><select name="SchoolClassId" class="form-select" required><option value="">Class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
-                        <div class="col-md-3"><select name="SubjectId" class="form-select" required><option value="">Subject</option>@foreach (var s in Model.Subjects.Where(x => x.IsActive)) { <option value="@s.Id">@s.Code - @s.Title</option> }</select></div>
-                        <div class="col-md-2"><input name="MaxMarks" type="number" step="0.01" min="0" class="form-control" placeholder="Max override" /></div>
-                        <div class="col-md-2"><input name="PassMarks" type="number" step="0.01" min="0" class="form-control" placeholder="Pass override" /></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-12">Class</label><select id="academic-12" name="SchoolClassId" class="form-select" required><option value="">Class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-13">Subject</label><select id="academic-13" name="SubjectId" class="form-select" required><option value="">Subject</option>@foreach (var s in Model.Subjects.Where(x => x.IsActive)) { <option value="@s.Id">@s.Code - @s.Title</option> }</select></div>
+                        <div class="col-md-2"><label class="form-label" for="academic-14">Maximum marks</label><input id="academic-14" name="MaxMarks" type="number" step="0.01" min="0" class="form-control" placeholder="Max override" /></div>
+                        <div class="col-md-2"><label class="form-label" for="academic-15">Pass marks</label><input id="academic-15" name="PassMarks" type="number" step="0.01" min="0" class="form-control" placeholder="Pass override" /></div>
                         <div class="col-md-2"><button class="btn btn-primary w-100">Assign</button></div>
                     </form>
                 }
@@ -185,10 +186,10 @@
                 {
                     <form asp-action="AssignTeacher" method="post" class="row g-2 mb-3">
                         <input type="hidden" name="AcademicSessionId" value="@Model.SelectedSessionId" />
-                        <div class="col-md-3"><select name="SchoolClassId" class="form-select" required><option value="">Class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
-                        <div class="col-md-3"><select name="SectionId" class="form-select"><option value="">All sections</option>@foreach (var c in Model.Classes) { foreach (var sec in c.Sections.Where(x => x.IsActive)) { <option value="@sec.Id">@c.Name - @sec.Name</option> } }</select></div>
-                        <div class="col-md-3"><select name="SubjectId" class="form-select" required><option value="">Subject</option>@foreach (var s in Model.Subjects.Where(x => x.IsActive)) { <option value="@s.Id">@s.Title</option> }</select></div>
-                        <div class="col-md-3"><select name="TeacherUserId" class="form-select" required><option value="">Teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@t.FullName</option> }</select></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-16">Class</label><select id="academic-16" name="SchoolClassId" class="form-select" required><option value="">Class</option>@foreach (var c in Model.Classes.Where(x => x.IsActive)) { <option value="@c.Id">@c.Name</option> }</select></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-17">Section</label><select id="academic-17" name="SectionId" class="form-select"><option value="">All sections</option>@foreach (var c in Model.Classes) { foreach (var sec in c.Sections.Where(x => x.IsActive)) { <option value="@sec.Id">@c.Name - @sec.Name</option> } }</select></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-18">Subject</label><select id="academic-18" name="SubjectId" class="form-select" required><option value="">Subject</option>@foreach (var s in Model.Subjects.Where(x => x.IsActive)) { <option value="@s.Id">@s.Title</option> }</select></div>
+                        <div class="col-md-3"><label class="form-label" for="academic-19">Teacher</label><select id="academic-19" name="TeacherUserId" class="form-select" required><option value="">Teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@t.FullName</option> }</select></div>
                         <div class="col-12"><small class="text-muted">Leave section blank for a class-wide subject assignment.</small></div>
                         <div class="col-12"><button class="btn btn-primary">Assign Teacher</button></div>
                     </form>

@@ -1,0 +1,54 @@
+@model School_Management_System.ViewModels.ExpenseFormViewModel
+
+<div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+<div class="row g-3">
+    <div class="col-md-4">
+        <label asp-for="ExpenseDate" class="form-label">Expense Date</label>
+        <input asp-for="ExpenseDate" type="date" class="form-control" />
+        <span asp-validation-for="ExpenseDate" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="ExpenseCategoryId" class="form-label">Category</label>
+        <select asp-for="ExpenseCategoryId" class="form-select">
+            <option value="">Select category</option>
+            @foreach (var item in Model.Categories)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <span asp-validation-for="ExpenseCategoryId" class="text-danger"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="Amount" class="form-label">Amount (Rs.)</label>
+        <input asp-for="Amount" class="form-control" step="0.01" min="0.01" />
+        <span asp-validation-for="Amount" class="text-danger"></span>
+        <div class="form-text">Expenses of Rs. 50,000 or more require Principal/Admin approval.</div>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="PaidTo" class="form-label">Vendor / Paid To</label>
+        <input asp-for="PaidTo" class="form-control" />
+        <span asp-validation-for="PaidTo" class="text-danger"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="PaymentMethod" class="form-label">Payment Method</label>
+        <select asp-for="PaymentMethod" asp-items="Html.GetEnumSelectList<ExpensePaymentMethod>()" class="form-select"></select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="ReferenceNumber" class="form-label">Reference</label>
+        <input asp-for="ReferenceNumber" class="form-control" placeholder="Cheque/bank/reference no." />
+    </div>
+    <div class="col-12">
+        <label asp-for="Notes" class="form-label">Notes</label>
+        <textarea asp-for="Notes" rows="3" class="form-control"></textarea>
+    </div>
+    <div class="col-md-8">
+        <label asp-for="Attachment" class="form-label">Receipt / Bill Attachment</label>
+        <input asp-for="Attachment" type="file" class="form-control" accept=".pdf,.jpg,.jpeg,.png" />
+        <span asp-validation-for="Attachment" class="text-danger"></span>
+        <div class="form-text">PDF/JPG/PNG, maximum 5 MB.</div>
+        @if (!string.IsNullOrWhiteSpace(Model.ExistingAttachmentName))
+        {
+            <div class="small mt-1">Current: <strong>@Model.ExistingAttachmentName</strong>. Uploading another file replaces it.</div>
+        }
+    </div>
+</div>

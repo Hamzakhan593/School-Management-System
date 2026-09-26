@@ -12,7 +12,7 @@
 
 @if (Model.Status == AdmissionApplicationStatus.Admitted)
 {
-    <div class="alert alert-success"><strong>Admission completed.</strong> Admission Number: <span class="fw-bold">@Model.AdmissionNumber</span></div>
+    <div class="alert alert-success"><strong>Admission completed.</strong> Admission Number: <span class="fw-bold">@Model.AdmissionNumber</span> <a class="btn btn-primary ms-2" asp-controller="Students" asp-action="Details" asp-route-id="@Model.StudentId">Open Student Profile</a></div>
 }
 
 <div class="row g-3 mb-4">
@@ -48,7 +48,7 @@
             }
             else if (Model.Status == AdmissionApplicationStatus.Submitted)
             {
-                <p class="small text-muted">Final approval creates the permanent Student, Guardian and Student Documents records and generates the admission number.</p>
+                <p class="small text-muted">Approve the reviewed application to create the student profile and admission number.</p>
                 <form asp-action="Admit" method="post" class="mb-2"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-success w-100">Approve & Admit Student</button></form>
                 <form asp-action="RejectApplication" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-outline-danger w-100" onclick="return confirm('Reject this admission application?')">Reject Application</button></form>
             }
@@ -61,7 +61,7 @@
                 <div class="text-success">Permanent student record created.</div>
             }
         </div></div>
-        <div class="alert alert-info small"><strong>Fee challan:</strong> the actual admission fee/challan is intentionally handled by M08 Fees, Challans & Receipts so financial records use one shared fee engine rather than duplicate logic.</div>
+        <div class="alert alert-info small"><strong>Next step:</strong> Generate the initial fee challan after admission. @if (Model.Status == AdmissionApplicationStatus.Admitted && Model.StudentId.HasValue && (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Accountant))) { <a asp-controller="Fees" asp-action="Generate" asp-route-studentId="@Model.StudentId" asp-route-academicSessionId="@Model.AcademicSessionId" class="alert-link">Generate this student's initial challan</a> }</div>
     </div>
 </div>
 

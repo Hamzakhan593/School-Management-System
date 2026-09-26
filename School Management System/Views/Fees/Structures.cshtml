@@ -1,0 +1,32 @@
+@model School_Management_System.ViewModels.FeeStructuresViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Fee Structures";
+}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h2 class="mb-1">Fee Structures</h2><div class="text-muted">Assign fee heads by class or override them for an individual student.</div></div><a class="btn btn-outline-secondary" asp-action="Index">Back to Fees</a></div>
+<div class="card border-0 shadow-sm mb-4"><div class="card-body"><h3 class="h5">@(Model.Form.Id.HasValue ? "Edit Structure" : "Add Structure")</h3>
+<form asp-action="SaveStructure" method="post" class="row g-3">@Html.AntiForgeryToken()<input type="hidden" name="Id" value="@Model.Form.Id" />
+<div class="col-md-4"><label class="form-label">Session</label><select class="form-select" name="AcademicSessionId">@foreach(var x in Model.Sessions){<option value="@x.Id" selected="@(x.Id==Model.Form.AcademicSessionId)">@x.Text</option>}</select></div>
+<div class="col-md-4"><label class="form-label">Fee Head</label><select class="form-select" name="FeeHeadId"><option value="">-- Select --</option>@foreach(var x in Model.FeeHeads){<option value="@x.Id" selected="@(x.Id==Model.Form.FeeHeadId)">@x.Text</option>}</select></div>
+<div class="col-md-4"><label class="form-label">Scope</label><select id="scope" class="form-select" name="Scope">@foreach(var f in Enum.GetValues<FeeStructureScope>()){<option value="@((int)f)" selected="@(f==Model.Form.Scope)">@f</option>}</select></div>
+<div class="col-md-4 scope-class"><label class="form-label">Class</label><select class="form-select" name="SchoolClassId"><option value="">-- Select class --</option>@foreach(var x in Model.Classes){<option value="@x.Id" selected="@(x.Id==Model.Form.SchoolClassId)">@x.Text</option>}</select></div>
+<div class="col-md-4 scope-student"><label class="form-label">Student</label><select class="form-select" name="StudentId"><option value="">-- Select student --</option>@foreach(var x in Model.Students){<option value="@x.Id" selected="@(x.Id==Model.Form.StudentId)">@x.Text</option>}</select></div>
+<div class="col-md-4"><label class="form-label">Frequency</label><select id="frequency" class="form-select" name="Frequency">@foreach(var f in Enum.GetValues<FeeFrequency>()){<option value="@((int)f)" selected="@(f==Model.Form.Frequency)">@f</option>}</select></div>
+<div class="col-md-4"><label class="form-label">Amount</label><input class="form-control" type="number" step="0.01" name="Amount" value="@Model.Form.Amount" /></div>
+<div class="col-md-4 term-field"><label class="form-label">Term</label><select class="form-select" name="TermId"><option value="">-- Select term --</option>@foreach(var x in Model.Terms){<option value="@x.Id" selected="@(x.Id==Model.Form.TermId)">@x.Text</option>}</select></div>
+<div class="col-md-4 charge-field"><label class="form-label">Charge Date</label><input class="form-control" type="date" name="ChargeDate" value="@Model.Form.ChargeDate?.ToString("yyyy-MM-dd")" /></div>
+<div class="col-md-4"><label class="form-label">Effective From</label><input class="form-control" type="date" name="EffectiveFrom" value="@Model.Form.EffectiveFrom?.ToString("yyyy-MM-dd")" /></div>
+<div class="col-md-4"><label class="form-label">Effective To</label><input class="form-control" type="date" name="EffectiveTo" value="@Model.Form.EffectiveTo?.ToString("yyyy-MM-dd")" /></div>
+<div class="col-md-8"><label class="form-label">Notes</label><input class="form-control" name="Notes" value="@Model.Form.Notes" /></div>
+<div class="col-md-4 d-flex align-items-end"><div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="IsActive" value="true" checked="@Model.Form.IsActive" /><label class="form-check-label">Active</label></div></div>
+<div class="col-12"><button class="btn btn-primary" type="submit">Save Structure</button>@if(Model.Form.Id.HasValue){<a class="btn btn-link" asp-action="Structures">Cancel</a>}</div>
+</form></div></div>
+
+<div class="card border-0 shadow-sm"><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Session</th><th>Fee Head</th><th>Target</th><th>Frequency</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody>
+@if(Model.Structures.Count==0){<tr><td colspan="7" class="text-center text-muted py-4">No fee structures yet.</td></tr>}
+@foreach(var x in Model.Structures){<tr><td>@x.AcademicSession.Name</td><td>@x.FeeHead.Name</td><td>@(x.Scope==FeeStructureScope.Student ? x.Student?.FullName : x.SchoolClass?.Name)</td><td>@x.Frequency</td><td>PKR @x.Amount.ToString("N2")</td><td>@(x.IsActive?"Active":"Inactive")</td><td><a class="btn btn-sm btn-outline-primary" asp-action="Structures" asp-route-editId="@x.Id">Edit</a></td></tr>}
+</tbody></table></div></div>
+@section Scripts{
+<script>
+(()=>{const scope=document.getElementById('scope'),freq=document.getElementById('frequency');const refresh=()=>{document.querySelectorAll('.scope-class').forEach(x=>x.style.display=scope.value==='1'?'':'none');document.querySelectorAll('.scope-student').forEach(x=>x.style.display=scope.value==='2'?'':'none');document.querySelectorAll('.term-field').forEach(x=>x.style.display=freq.value==='3'?'':'none');document.querySelectorAll('.charge-field').forEach(x=>x.style.display=(freq.value==='2'||freq.value==='4')?'':'none');};scope?.addEventListener('change',refresh);freq?.addEventListener('change',refresh);refresh();})();
+</script>}

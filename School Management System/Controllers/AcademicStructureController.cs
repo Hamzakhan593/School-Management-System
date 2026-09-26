@@ -86,6 +86,25 @@ public class AcademicStructureController : Controller
             .OrderBy(x => x.FullName)
             .ToList();
 
+        var isManager = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin);
+        if (!isManager)
+        {
+            var teacherId = _userManager.GetUserId(User);
+            teacherAssignments = teacherAssignments.Where(x => x.TeacherUserId == teacherId).ToList();
+            var assignedIds = teacherAssignments.Select(x => x.SchoolClassId).ToHashSet();
+            classes = classes.Where(x => assignedIds.Contains(x.Id) || x.Sections.Any(s => s.ClassTeacherUserId == teacherId)).ToList();
+            foreach (var schoolClass in classes)
+            {
+                var classWide = teacherAssignments.Any(x => x.SchoolClassId == schoolClass.Id && x.SectionId == null);
+                if (!classWide) schoolClass.Sections = schoolClass.Sections.Where(s => s.ClassTeacherUserId == teacherId || teacherAssignments.Any(a => a.SectionId == s.Id)).ToList();
+            }
+            var visibleIds = classes.Select(x => x.Id).ToHashSet();
+            classSubjects = classSubjects.Where(x => visibleIds.Contains(x.SchoolClassId)).ToList();
+            var subjectIds = classSubjects.Select(x => x.SubjectId).ToHashSet();
+            subjects = subjects.Where(x => subjectIds.Contains(x.Id)).ToList();
+            schoolTeachers = schoolTeachers.Where(x => x.Id == teacherId).ToList();
+        }
+
         return View(new AcademicStructureIndexViewModel
         {
             SelectedSessionId = selectedSessionId,

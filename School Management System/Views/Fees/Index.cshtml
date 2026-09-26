@@ -1,0 +1,64 @@
+@model School_Management_System.ViewModels.FeesDashboardViewModel
+@{
+    ViewData["Title"] = "Fees & Challans";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h2 class="mb-1">Fees</h2>
+        <div class="text-muted">Billing period @Model.BillingPeriod — one shared student fee ledger.</div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" asp-action="Generate">Generate Challans</a>
+        <a class="btn btn-outline-primary" asp-action="Challans">All Challans</a>
+        <a class="btn btn-outline-secondary" asp-action="Ledger">Student Ledger</a>
+    </div>
+</div>
+
+<partial name="_StudentSearch" />
+<div class="row g-3 mb-4">
+    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Current Month Charges</div><div class="fs-3 fw-semibold">PKR @Model.CurrentMonthCharges.ToString("N2")</div><div class="small text-muted">Billing period @Model.BillingPeriod · @Model.ChallansThisMonth challan(s)</div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Collected This Month</div><div class="fs-3 fw-semibold">PKR @Model.CurrentMonthCollected.ToString("N2")</div><div class="small text-muted">@DateTime.Today.ToString("01 MMM") – @DateTime.Today.ToString("dd MMM yyyy")</div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Outstanding</div><div class="fs-3 fw-semibold">PKR @Model.TotalOutstanding.ToString("N2")</div><div class="small text-muted">All periods · as of @DateTime.Today.ToString("dd MMM yyyy")</div></div></div></div>
+    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Overdue Students</div><div class="fs-3 fw-semibold">@Model.OverdueStudentCount</div></div></div></div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+        <h3 class="h5">Fee management</h3>
+        <div class="d-flex flex-wrap gap-2">
+            <a class="btn btn-outline-dark" asp-action="FeeHeads">Fee Heads</a>
+            <a class="btn btn-outline-dark" asp-action="Structures">Fee Structures</a>
+            <a class="btn btn-outline-dark" asp-action="Discounts">Discounts / Scholarships</a>
+            <a class="btn btn-outline-dark" asp-action="Defaulters">Defaulters</a>
+            <a class="btn btn-outline-dark" asp-action="DailyCollection">Daily Collection</a>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">Recent Payments</div>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Receipt</th><th>Student</th><th>Amount</th><th>Status</th></tr></thead><tbody>
+            @if (Model.RecentPayments.Count == 0) { <tr><td colspan="4" class="text-muted text-center py-4">No payments yet.</td></tr> }
+            @foreach (var p in Model.RecentPayments)
+            {
+                <tr><td><a asp-action="ReceiptPdf" asp-route-id="@p.Id">@p.ReceiptNumber</a></td><td>@p.Student.FullName</td><td>PKR @p.Amount.ToString("N2")</td><td>@(p.IsReversed ? "Reversed" : "Posted")</td></tr>
+            }
+            </tbody></table></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white fw-semibold">Recent Challans</div>
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>Challan</th><th>Student</th><th>Period</th><th>Balance</th></tr></thead><tbody>
+            @if (Model.RecentChallans.Count == 0) { <tr><td colspan="4" class="text-muted text-center py-4">No challans yet.</td></tr> }
+            @foreach (var c in Model.RecentChallans)
+            {
+                <tr><td><a asp-action="ChallanDetails" asp-route-id="@c.Id">@c.ChallanNumber</a></td><td>@c.Student.FullName</td><td>@c.BillingPeriod</td><td>PKR @c.Balance.ToString("N2")</td></tr>
+            }
+            </tbody></table></div>
+        </div>
+    </div>
+</div>

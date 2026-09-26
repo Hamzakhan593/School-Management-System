@@ -1,0 +1,77 @@
+@model School_Management_System.ViewModels.StaffAttendanceMarkingViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Staff Attendance";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Staff Attendance</h1><p class="text-muted mb-0">Daily staff attendance with manual, biometric and camera source tracking.</p></div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-primary" asp-action="MonthlyReport" asp-route-month="@Model.AttendanceDate.ToString("yyyy-MM")">Monthly Report</a>
+        <a class="btn btn-outline-secondary" asp-action="Camera">Camera Check-in</a>
+        <a class="btn btn-outline-secondary" asp-action="Integrations">Biometric Mapping</a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4"><div class="card-body">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-4"><label class="form-label">Attendance Date</label><input class="form-control" type="date" name="date" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" /></div>
+        <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Load Staff</button></div>
+    </form>
+</div></div>
+
+@if (Model.StaffMembers.Count == 0)
+{
+    <div class="alert alert-info">No staff members are employed on the selected date.</div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="text-muted">@Model.StaffMembers.Count staff member(s) · @Model.AttendanceDate.ToString("dd MMM yyyy")</div>
+        <button type="button" id="markAllPresent" class="btn btn-sm btn-outline-success">Mark All Present</button>
+    </div>
+    <form method="post" asp-action="Save">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="AttendanceDate" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
+        <div class="card shadow-sm"><div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light"><tr><th>Employee</th><th>Designation</th><th style="min-width:160px">Status</th><th>Source / Time</th><th style="min-width:220px">Remarks</th></tr></thead>
+                <tbody>
+                @for (var i = 0; i < Model.StaffMembers.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <strong>@Model.StaffMembers[i].StaffName</strong>
+                            <div class="small text-muted">@Model.StaffMembers[i].EmployeeId · @(Model.StaffMembers[i].Department ?? "No department")</div>
+                            <input type="hidden" asp-for="StaffMembers[i].StaffId" />
+                            <input type="hidden" asp-for="StaffMembers[i].EmployeeId" />
+                            <input type="hidden" asp-for="StaffMembers[i].StaffName" />
+                            <input type="hidden" asp-for="StaffMembers[i].Designation" />
+                            <input type="hidden" asp-for="StaffMembers[i].Department" />
+                            <input type="hidden" asp-for="StaffMembers[i].Source" />
+                        </td>
+                        <td>@Model.StaffMembers[i].Designation</td>
+                        <td><select asp-for="StaffMembers[i].Status" asp-items="Html.GetEnumSelectList<StaffAttendanceStatus>()" class="form-select staff-attendance-status"></select></td>
+                        <td>
+                            <span class="badge text-bg-secondary">@Model.StaffMembers[i].Source</span>
+                            @if (Model.StaffMembers[i].CheckInUtc.HasValue || Model.StaffMembers[i].CheckOutUtc.HasValue)
+                            {
+                                <div class="small text-muted mt-1">In: @(Model.StaffMembers[i].CheckInUtc?.ToLocalTime().ToString("HH:mm") ?? "-") · Out: @(Model.StaffMembers[i].CheckOutUtc?.ToLocalTime().ToString("HH:mm") ?? "-")</div>
+                            }
+                        </td>
+                        <td><input asp-for="StaffMembers[i].Remarks" class="form-control" maxlength="300" placeholder="Optional" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div><div class="card-footer bg-white text-end"><button class="btn btn-primary px-4" type="submit">Save Attendance</button></div></div>
+    </form>
+}
+
+@section Scripts {
+<script>
+    document.getElementById('markAllPresent')?.addEventListener('click', () => {
+        document.querySelectorAll('.staff-attendance-status').forEach(x => x.value = '@((int)StaffAttendanceStatus.Present)');
+    });
+</script>
+}

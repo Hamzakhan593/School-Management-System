@@ -1,0 +1,74 @@
+@model School_Management_System.ViewModels.ExamIndexViewModel
+@{
+    ViewData["Title"] = "Examinations & Marks";
+    var canManage = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.ExamController);
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Examinations & Marks</h1>
+        <p class="text-muted mb-0">Configure exams, assign class subjects, enter marks, verify and lock marks.</p>
+    </div>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2 align-items-center">
+            <label class="small text-muted">Session</label>
+            <select name="sessionId" class="form-select" onchange="this.form.submit()">
+                @foreach (var session in Model.Sessions)
+                {
+                    if (Model.SelectedSessionId == session.Id)
+                    {
+                        <option value="@session.Id" selected>@session.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@session.Id">@session.Name</option>
+                    }
+                }
+            </select>
+        </form>
+        @if (canManage)
+        {
+            <a class="btn btn-primary" asp-action="Create" asp-route-sessionId="@Model.SelectedSessionId">Create Exam</a>
+        }
+    </div>
+</div>
+
+@if (!Model.Sessions.Any())
+{
+    <div class="alert alert-warning">Create an academic session first.</div>
+}
+else if (!Model.Exams.Any())
+{
+    <div class="card shadow-sm"><div class="card-body text-muted">No exams found for this session.</div></div>
+}
+else
+{
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light"><tr><th>Exam</th><th>Type / Term</th><th>Dates</th><th>Classes</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var exam in Model.Exams)
+                {
+                    var badge = exam.Status switch
+                    {
+                        ExamStatus.Draft => "bg-secondary",
+                        ExamStatus.MarksEntryOpen => "bg-primary",
+                        ExamStatus.MarksLocked => "bg-warning text-dark",
+                        ExamStatus.Published => "bg-success",
+                        _ => "bg-dark"
+                    };
+                    <tr>
+                        <td><strong>@exam.Title</strong><div class="small text-muted">@exam.AcademicSession.Name</div></td>
+                        <td>@exam.ExamType<div class="small text-muted">@(exam.Term?.Name ?? "No term")</div></td>
+                        <td>@exam.StartDate.ToString("dd MMM yyyy")<br /><span class="small text-muted">to @exam.EndDate.ToString("dd MMM yyyy")</span></td>
+                        <td>@(exam.ExamClasses.Any() ? string.Join(", ", exam.ExamClasses.OrderBy(x => x.SchoolClass.SortOrder).Select(x => x.SchoolClass.Name)) : "Not assigned")</td>
+                        <td><span class="badge @badge">@exam.Status</span>@if (!exam.IsActive) { <span class="badge bg-light text-dark border ms-1">Inactive</span> }</td>
+                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@exam.Id">Open</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

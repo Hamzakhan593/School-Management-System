@@ -4,6 +4,8 @@ namespace School_Management_System.ViewModels;
 
 public class StudentDetailsViewModel
 {
+    public IReadOnlyList<StudentAttendance> Attendance { get; set; } = [];
+    public IReadOnlyList<StudentResult> Results { get; set; } = [];
     public Student Student { get; set; } = null!;
     public StudentEnrollment? CurrentEnrollment { get; set; }
     public IReadOnlyList<StudentEnrollment> EnrollmentHistory { get; set; } = [];

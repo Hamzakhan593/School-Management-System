@@ -3,6 +3,7 @@
     ViewData["Title"] = "Student Profile";
     var s = Model.Student;
     var canEdit = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Receptionist);
+    var canAcademicHistory = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin);
     var requestedTab = Context.Request.Query["tab"].ToString();
     var activeTab = string.IsNullOrWhiteSpace(requestedTab) ? "overview" : requestedTab.ToLowerInvariant();
 }
@@ -18,7 +19,7 @@
             <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@s.Id">Edit Profile</a>
             <a class="btn btn-primary" asp-action="ChangePlacement" asp-route-id="@s.Id">Change Placement</a>
         }
-        <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+        <a class="btn btn-outline-secondary" asp-action="Index" data-student-back>Back to Students</a>
     </div>
 </div>
 
@@ -38,7 +39,7 @@
                 {
                     <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="mt-2" style="max-width:220px">
                         <input type="hidden" name="studentId" value="@s.Id" />
-                        <input type="file" name="photo" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-2" />
+                        <label class="form-label" for="studentPhoto">Student photo</label><input id="studentPhoto" type="file" name="photo" accept=".jpg,.jpeg,.png" class="form-control form-control-sm mb-2" />
                         <button class="btn btn-sm btn-outline-secondary w-100" type="submit">Update Photo</button>
                     </form>
                 }
@@ -58,8 +59,8 @@
 <ul class="nav nav-tabs mb-3" role="tablist">
     <li class="nav-item"><button class="nav-link @(activeTab == "overview" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#overview" type="button">Overview</button></li>
     <li class="nav-item"><button class="nav-link @(activeTab == "fees" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#fees" type="button">Fees</button></li>
-    <li class="nav-item"><button class="nav-link @(activeTab == "attendance" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#attendance" type="button">Attendance</button></li>
-    <li class="nav-item"><button class="nav-link @(activeTab == "results" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#results" type="button">Results</button></li>
+    @if (canAcademicHistory) { <li class="nav-item"><button class="nav-link @(activeTab == "attendance" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#attendance" type="button">Attendance</button></li>
+    <li class="nav-item"><button class="nav-link @(activeTab == "results" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#results" type="button">Results</button></li> }
     <li class="nav-item"><button class="nav-link @(activeTab == "documents" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#documents" type="button">Documents</button></li>
     <li class="nav-item"><button class="nav-link @(activeTab == "history" ? "active" : "")" data-bs-toggle="tab" data-bs-target="#history" type="button">History</button></li>
 </ul>
@@ -111,15 +112,23 @@
     </div>
 
     <div class="tab-pane fade @(activeTab == "fees" ? "show active" : "")" id="fees">
-        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Fees</h2><p class="text-muted mb-0">The student fee ledger will connect here when M08 — Fees, Challans & Receipts is installed.</p></div></div>
+        <div class="card shadow-sm"><div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div><h2 class="h5 mb-1">Fees</h2><p class="text-muted mb-0">Review challans, receipts and the current outstanding balance.</p></div>
+                @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Accountant))
+                {
+                    <div class="d-flex gap-2"><a class="btn btn-primary" asp-controller="Fees" asp-action="Ledger" asp-route-studentId="@s.Id">Open Fee Ledger</a><a class="btn btn-outline-success" asp-controller="Fees" asp-action="CollectPayment" asp-route-studentId="@s.Id">Collect Fee</a></div>
+                }
+            </div>
+        </div></div>
     </div>
 
     <div class="tab-pane fade @(activeTab == "attendance" ? "show active" : "")" id="attendance">
-        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Attendance</h2><p class="text-muted mb-0">Attendance percentage and daily records will connect here when M06 — Student Attendance is installed.</p></div></div>
+        @if (canAcademicHistory) { <div class="card"><div class="card-body"><h2 class="h5">Recent attendance</h2><p class="text-muted">Latest 60 recorded days. Missing days are unmarked.</p><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Status</th><th>Remarks</th></tr></thead><tbody>@if (!Model.Attendance.Any()) { <tr><td colspan="3">No attendance recorded yet.</td></tr> }@foreach (var day in Model.Attendance) { <tr><td>@day.AttendanceDate.ToString("dd MMM yyyy")</td><td>@day.Status</td><td>@(day.Remarks ?? "—")</td></tr> }</tbody></table></div></div></div> }
     </div>
 
     <div class="tab-pane fade @(activeTab == "results" ? "show active" : "")" id="results">
-        <div class="card shadow-sm"><div class="card-body"><h2 class="h5">Results</h2><p class="text-muted mb-0">Exam and result history will connect here after M09 and M10 are installed.</p></div></div>
+        @if (canAcademicHistory) { <div class="card"><div class="card-body"><h2 class="h5">Published results</h2><div class="table-responsive"><table class="table"><thead><tr><th>Exam</th><th>Marks</th><th>Percentage</th><th>Grade</th><th>Result</th></tr></thead><tbody>@if (!Model.Results.Any()) { <tr><td colspan="5">No published results yet.</td></tr> }@foreach (var result in Model.Results) { <tr><td>@result.Exam.Title</td><td>@result.ObtainedMarks / @result.MaximumMarks</td><td>@result.Percentage.ToString("0.#")%</td><td>@result.Grade</td><td>@(result.IsPassed ? "Passed" : "Needs improvement")</td></tr> }</tbody></table></div></div></div> }
     </div>
 
     <div class="tab-pane fade @(activeTab == "documents" ? "show active" : "")" id="documents">

@@ -1,0 +1,107 @@
+@model School_Management_System.ViewModels.CommunicationIndexViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Notices & Documents";
+}
+
+<section class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">School communication center</div>
+        <h1>Notices, Circulars & Documents</h1>
+        <p>Published school announcements and controlled downloads in one place.</p>
+    </div>
+    @if (Model.CanManage)
+    {
+        <a class="btn btn-primary sms-btn" asp-action="Manage">Manage Communications</a>
+    }
+</section>
+
+<div class="row g-4">
+    <div class="col-xl-7">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h5 mb-1">Latest Notices</h2>
+                    <p class="text-muted mb-0">Only currently published notices are shown here.</p>
+                </div>
+                <span class="badge text-bg-primary rounded-pill">@Model.Notices.Count</span>
+            </div>
+            <div class="card-body p-0">
+                @if (!Model.Notices.Any())
+                {
+                    <div class="text-center text-muted py-5 px-4">No active notices are available right now.</div>
+                }
+                else
+                {
+                    <div class="list-group list-group-flush">
+                    @foreach (var item in Model.Notices)
+                    {
+                        <article class="list-group-item border-0 border-top px-4 py-4">
+                            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                                <span class="badge text-bg-light border">@item.Audience</span>
+                                @if (item.Audience == NoticeAudience.Class)
+                                {
+                                    <span class="badge text-bg-info">@(item.SchoolClass?.Name ?? "Class") @(item.Section is null ? "" : "- " + item.Section.Name)</span>
+                                }
+                                @if (item.PublishedAtUtc.HasValue)
+                                {
+                                    <span class="text-muted small">Published @item.PublishedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt")</span>
+                                }
+                            </div>
+                            <h3 class="h5 mb-2">@item.Title</h3>
+                            <div class="text-body-secondary" style="white-space:pre-line">@item.Body</div>
+                            @if (!string.IsNullOrWhiteSpace(item.AttachmentStorageKey))
+                            {
+                                <div class="mt-3">
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="DownloadNoticeAttachment" asp-route-id="@item.Id">Download attachment</a>
+                                    <span class="small text-muted ms-2">@item.AttachmentOriginalName</span>
+                                </div>
+                            }
+                        </article>
+                    }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-5">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h5 mb-1">Downloadable Documents</h2>
+                    <p class="text-muted mb-0">Policies, timetables, circulars and forms.</p>
+                </div>
+                <span class="badge text-bg-secondary rounded-pill">@Model.Documents.Count</span>
+            </div>
+            <div class="list-group list-group-flush">
+                @if (!Model.Documents.Any())
+                {
+                    <div class="text-center text-muted py-5 px-4">No active documents are available.</div>
+                }
+                else
+                {
+                    @foreach (var doc in Model.Documents)
+                    {
+                        <div class="list-group-item border-0 border-top px-4 py-3">
+                            <div class="d-flex justify-content-between gap-3">
+                                <div>
+                                    <div class="small text-uppercase text-muted fw-semibold mb-1">@doc.Category · @doc.Audience</div>
+                                    <div class="fw-semibold">@doc.Title</div>
+                                    @if (!string.IsNullOrWhiteSpace(doc.Description))
+                                    {
+                                        <div class="small text-muted mt-1">@doc.Description</div>
+                                    }
+                                    <div class="small text-muted mt-1">@doc.OriginalFileName · @((doc.SizeBytes / 1024d).ToString("N0")) KB</div>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <a class="btn btn-sm btn-outline-primary" asp-action="DownloadDocument" asp-route-id="@doc.Id">Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    </div>
+</div>

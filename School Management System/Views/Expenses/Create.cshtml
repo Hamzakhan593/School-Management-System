@@ -1,0 +1,22 @@
+@model School_Management_System.ViewModels.ExpenseFormViewModel
+@{
+    ViewData["Title"] = "Record Expense";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Record Expense</h2>
+        <div class="text-muted">Create an operating expense with receipt/bill evidence where available.</div>
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
+</div>
+<div class="card shadow-sm">
+    <div class="card-body">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            <partial name="_ExpenseForm" model="Model" />
+            <div class="mt-4">
+                <button class="btn btn-primary" type="submit">Save Expense</button>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

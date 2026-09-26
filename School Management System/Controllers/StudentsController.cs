@@ -39,7 +39,9 @@ public class StudentsController : Controller
         string? q,
         StudentStatus? status,
         string? className,
-        int? academicSessionId)
+        int? academicSessionId,
+        string? sectionName,
+        int page = 1)
     {
         var schoolId = await RequireSchoolIdAsync();
         if (!schoolId.HasValue) return RedirectToSchoolSetup();
@@ -60,6 +62,7 @@ public class StudentsController : Controller
                 x.FullName.Contains(term) ||
                 x.AdmissionNumber.Contains(term) ||
                 (x.RollNumber != null && x.RollNumber.Contains(term)) ||
+                x.Enrollments.Any(e => e.IsCurrent && e.RollNumber != null && e.RollNumber.Contains(term)) ||
                 (x.BFormCnic != null && x.BFormCnic.Contains(term)) ||
                 x.StudentGuardians.Any(g => g.Guardian.Phone.Contains(term)));
         }
@@ -76,9 +79,20 @@ public class StudentsController : Controller
         if (academicSessionId.HasValue)
             query = query.Where(x => x.Enrollments.Any(e => e.IsCurrent && e.AcademicSessionId == academicSessionId.Value));
 
+        if (!string.IsNullOrWhiteSpace(sectionName))
+            query = query.Where(x => x.Enrollments.Any(e => e.IsCurrent && e.SectionName == sectionName));
+        ViewBag.SectionName = sectionName;
+        ViewBag.Sections = await _db.StudentEnrollments.Where(x => x.SchoolId == schoolId.Value && x.IsCurrent && (className == null || x.ClassName == className) && x.SectionName != null).Select(x => x.SectionName).Distinct().OrderBy(x => x).ToListAsync();
+
+        var matchCount = await query.CountAsync();
+        const int pageSize = 20;
+        page = Math.Clamp(page, 1, Math.Max(1, (int)Math.Ceiling(matchCount / (double)pageSize)));
+        ViewBag.Page = page;
+        ViewBag.MatchCount = matchCount;
+        ViewBag.PageCount = Math.Max(1, (int)Math.Ceiling(matchCount / (double)pageSize));
         var students = await query
-            .OrderBy(x => x.FullName)
-            .Take(500)
+            .OrderBy(x => x.FullName).ThenBy(x => x.Id)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .ToListAsync();
 
         var all = _db.Students.AsNoTracking().Where(x => x.SchoolId == schoolId.Value);
@@ -140,6 +154,11 @@ public class StudentsController : Controller
             Documents = student.Documents.OrderByDescending(x => x.UploadedAtUtc).ToList()
         };
 
+        if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+        {
+            model.Attendance = await _db.StudentAttendances.AsNoTracking().Where(x => x.SchoolId == schoolId.Value && x.StudentId == id).OrderByDescending(x => x.AttendanceDate).Take(60).ToListAsync();
+            model.Results = await _db.StudentResults.AsNoTracking().Include(x => x.Exam).Where(x => x.SchoolId == schoolId.Value && x.StudentId == id && x.IsCurrent && x.Status == StudentResultStatus.Published).OrderByDescending(x => x.PublishedAtUtc).ToListAsync();
+        }
         return View(model);
     }
 

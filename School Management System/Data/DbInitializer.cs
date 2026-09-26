@@ -36,6 +36,33 @@ public static class DbInitializer
                 }
             }
 
+            // M13: seed practical default expense categories for existing schools.
+            var defaultExpenseCategories = new[]
+            {
+                "Utilities", "Maintenance", "Stationery", "Transport", "Rent",
+                "Internet", "Cleaning", "Events", "Miscellaneous"
+            };
+            var schoolIds = await db.Schools.AsNoTracking().Select(x => x.Id).ToListAsync();
+            foreach (var schoolId in schoolIds)
+            {
+                var existing = await db.ExpenseCategories.Where(x => x.SchoolId == schoolId).Select(x => x.Name).ToListAsync();
+                for (var i = 0; i < defaultExpenseCategories.Length; i++)
+                {
+                    var name = defaultExpenseCategories[i];
+                    if (!existing.Contains(name))
+                    {
+                        db.ExpenseCategories.Add(new ExpenseCategory
+                        {
+                            SchoolId = schoolId,
+                            Name = name,
+                            SortOrder = (i + 1) * 10,
+                            IsActive = true
+                        });
+                    }
+                }
+            }
+            await db.SaveChangesAsync();
+
             if (!configuration.GetValue<bool>("SeedAdmin:Enabled"))
             {
                 return;

@@ -1,4 +1,5 @@
 using System.Data;
+using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using School_Management_System.Data;
 using School_Management_System.Models;
@@ -8,10 +9,12 @@ namespace School_Management_System.Services;
 public class AdmissionService : IAdmissionService
 {
     private readonly ApplicationDbContext _db;
+    private readonly ISystemSettingsService _settings;
 
-    public AdmissionService(ApplicationDbContext db)
+    public AdmissionService(ApplicationDbContext db, ISystemSettingsService settings)
     {
         _db = db;
+        _settings = settings;
     }
 
     public async Task<(bool Success, string Message, int? StudentId, string? AdmissionNumber)> AdmitAsync(
@@ -49,7 +52,10 @@ public class AdmissionService : IAdmissionService
         }
 
         counter.LastNumber++;
-        var admissionNumber = $"STD-{year}-{counter.LastNumber:0000}";
+        var numberSettings = await _settings.GetAsync(schoolId, cancellationToken);
+        var digits = Math.Clamp(numberSettings.AdmissionNumberDigits, 3, 8);
+        var prefix = string.IsNullOrWhiteSpace(numberSettings.AdmissionNumberPrefix) ? "STD" : numberSettings.AdmissionNumberPrefix.Trim().ToUpperInvariant();
+        var admissionNumber = $"{prefix}-{year}-{counter.LastNumber.ToString(new string('0', digits), CultureInfo.InvariantCulture)}";
 
         var guardian = new Guardian
         {

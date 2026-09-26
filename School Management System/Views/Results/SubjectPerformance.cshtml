@@ -1,0 +1,54 @@
+@model School_Management_System.ViewModels.SubjectPerformanceViewModel
+@{
+    ViewData["Title"] = "Subject Performance";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Subject Performance</h2>
+        <div class="text-muted">@Model.Exam.Title · @Model.SchoolClass.Name · @(Model.Section?.Name ?? "All Sections")</div>
+    </div>
+    <a asp-action="ClassResult" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-outline-secondary">Back to Class Result</a>
+</div>
+
+@if (Model.Sections.Count > 0)
+{
+    <form method="get" class="card card-body mb-3">
+        <input type="hidden" name="examId" value="@Model.Exam.Id" />
+        <input type="hidden" name="classId" value="@Model.SchoolClass.Id" />
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Section</label>
+                <select name="sectionId" class="form-select">
+                    <option value="">All Sections</option>
+                    @foreach (var sec in Model.Sections)
+                    {
+                        <option value="@sec.Id" selected="@(Model.Section?.Id == sec.Id)">@sec.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-auto"><button class="btn btn-primary">Load</button></div>
+        </div>
+    </form>
+}
+
+<div class="card">
+    <div class="card-body p-0 table-responsive">
+        <table class="table table-striped mb-0 align-middle">
+            <thead class="table-light"><tr><th>Subject</th><th>Students</th><th>Passed</th><th>Failed</th><th>Absent</th><th>Avg Marks</th><th>Avg %</th><th>Pass Rate</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.Subjects)
+            {
+                <tr>
+                    <td><strong>@row.Subject</strong></td><td>@row.StudentCount</td><td>@row.PassedCount</td><td>@row.FailedCount</td><td>@row.AbsentCount</td>
+                    <td>@row.AverageMarks.ToString("0.00") / @row.MaximumMarks.ToString("0.##")</td><td>@row.AveragePercentage.ToString("0.00")%</td><td>@row.PassRate.ToString("0.00")%</td>
+                </tr>
+            }
+            @if (Model.Subjects.Count == 0)
+            {
+                <tr><td colspan="8" class="text-center text-muted py-4">No marks data found.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

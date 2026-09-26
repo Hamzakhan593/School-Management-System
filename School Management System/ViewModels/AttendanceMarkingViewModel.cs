@@ -30,6 +30,7 @@ public class AttendanceMarkingViewModel
     public List<AcademicSession> Sessions { get; set; } = [];
     public List<SchoolClass> Classes { get; set; } = [];
     public List<Section> Sections { get; set; } = [];
+    public List<StudentAttendanceStatus> AllowedStatuses { get; set; } = Enum.GetValues<StudentAttendanceStatus>().ToList();
     public List<AttendanceStudentRowViewModel> Students { get; set; } = [];
 }
 
@@ -41,7 +42,7 @@ public class AttendanceStudentRowViewModel
     public string AdmissionNumber { get; set; } = string.Empty;
     public string? RollNumber { get; set; }
     public string StudentName { get; set; } = string.Empty;
-    public StudentAttendanceStatus Status { get; set; } = StudentAttendanceStatus.Present;
+    public StudentAttendanceStatus Status { get; set; } = (StudentAttendanceStatus)0;
     public AttendanceSource Source { get; set; } = AttendanceSource.Manual;
 
     [StringLength(300)]

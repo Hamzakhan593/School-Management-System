@@ -1,0 +1,41 @@
+@model School_Management_System.ViewModels.StaffAttendanceIntegrationsViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Staff Attendance Integrations";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Staff Biometric Mapping</h1><p class="text-muted mb-0">Reuse attendance devices for staff fingerprint/biometric attendance.</p></div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back to Staff Attendance</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-5"><div class="card shadow-sm"><div class="card-header fw-semibold">New Staff Enrollment</div><div class="card-body">
+        @if (Model.Devices.Count == 0)
+        {
+            <div class="alert alert-warning mb-0">No active attendance device exists. Create/configure the device first under Attendance Devices ().</div>
+        }
+        else
+        {
+            <form method="post" asp-action="EnrollBiometric">
+                @Html.AntiForgeryToken()
+                <div class="mb-3"><label class="form-label">Attendance Device</label><select class="form-select" name="BiometricDeviceId" required><option value="">-- Select --</option>@foreach (var d in Model.Devices){<option value="@d.Id">@d.Name (@d.DeviceCode)</option>}</select></div>
+                <div class="mb-3"><label class="form-label">Staff Member</label><select class="form-select" name="StaffId" required><option value="">-- Select --</option>@foreach (var s in Model.StaffMembers){<option value="@s.Id">@s.EmployeeId - @s.FullName</option>}</select></div>
+                <div class="mb-3"><label class="form-label">Device User Reference</label><input class="form-control" name="DeviceUserReference" maxlength="100" required placeholder="Example: 1025" /></div>
+                <div class="mb-3"><label class="form-label">Modality</label><select class="form-select" name="Modality" asp-items="Html.GetEnumSelectList<BiometricModality>()"></select></div>
+                <div class="mb-3"><label class="form-label">Template Reference (optional)</label><input class="form-control" name="TemplateReference" maxlength="200" /></div>
+                <button class="btn btn-primary" type="submit">Save Enrollment</button>
+            </form>
+        }
+    </div></div></div>
+    <div class="col-lg-7"><div class="card shadow-sm"><div class="card-header fw-semibold">Existing Staff Enrollments</div><div class="table-responsive"><table class="table table-hover align-middle mb-0">
+        <thead class="table-light"><tr><th>Staff</th><th>Device</th><th>Reference</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        @if (Model.Enrollments.Count == 0) { <tr><td colspan="5" class="text-center text-muted py-4">No staff biometric mappings yet.</td></tr> }
+        else { @foreach (var e in Model.Enrollments) { <tr><td><strong>@e.Staff.FullName</strong><div class="small text-muted">@e.Staff.EmployeeId</div></td><td>@e.BiometricDevice.Name</td><td>@e.DeviceUserReference</td><td><span class="badge text-bg-@(e.IsActive ? "success" : "secondary")">@(e.IsActive ? "Active" : "Inactive")</span></td><td class="text-end">@if(e.IsActive){<form method="post" asp-action="DeactivateEnrollment" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@e.Id"/><button class="btn btn-sm btn-outline-danger">Deactivate</button></form>}</td></tr> } }
+        </tbody>
+    </table></div></div></div>
+</div>
+
+<div class="alert alert-info mt-4 mb-0">
+    Staff-device events use <code>POST /api/staff-attendance/bridge/events</code> with the same <code>X-Device-Key</code> created for the biometric device. Device user references are matched against the staff mappings above.
+</div>

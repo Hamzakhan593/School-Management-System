@@ -1,97 +1,144 @@
+@using Microsoft.AspNetCore.Identity
+@using School_Management_System.Models
+@using School_Management_System.Services
+@inject UserManager<ApplicationUser> UserManager
+@inject ISchoolContextService SchoolContext
+@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    ApplicationUser? shellUser = null;
+    School? shellSchool = null;
+    IList<string> shellRoles = Array.Empty<string>();
+    if (User.Identity?.IsAuthenticated == true)
+    {
+        shellUser = await UserManager.GetUserAsync(User);
+        shellSchool = await SchoolContext.GetCurrentSchoolAsync();
+        if (shellUser is not null) shellRoles = await UserManager.GetRolesAsync(shellUser);
+    }
+    var pageTitle = ViewData["Title"]?.ToString() ?? "School Management System";
+    var initials = string.Join("", (shellUser?.FullName ?? "User").Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - School Management System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#087568" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="School Management" />
+    <link rel="manifest" href="~/manifest.json" />
+    <link rel="apple-touch-icon" href="~/icons/apple-touch-icon.png" />
+    <title>@pageTitle - @(shellSchool?.Name ?? "School Management System")</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/pwa.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/School_Management_System.styles.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/workspace.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/clarity.css" asp-append-version="true" />
 </head>
-<body class="bg-light">
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-dark sms-navbar shadow-sm mb-4">
-            <div class="container-fluid px-lg-4">
-                <a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">School Management System</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav" aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="mainNav">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <li class="nav-item"><a class="nav-link" asp-controller="Dashboard" asp-action="Index">Dashboard</a></li>
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="SchoolSetup" asp-action="Index">School Profile</a></li>
-                                <li class="nav-item"><a class="nav-link" asp-controller="AcademicSessions" asp-action="Index">Academic Sessions</a></li>
-                                <li class="nav-item"><a class="nav-link" asp-controller="UserManagement" asp-action="Index">Users & Roles</a></li>
-                            }
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("Receptionist"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="Admissions" asp-action="Index">Admissions</a></li>
-                            }
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("Receptionist"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="Students" asp-action="Index">Students</a></li>
-                            }
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("Teacher"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="Attendance" asp-action="Index">Attendance</a></li>
-                                <li class="nav-item"><a class="nav-link" asp-controller="CameraAttendance" asp-action="Index">Camera Attendance</a></li>
-                            }
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="AttendanceIntegrations" asp-action="Index">Attendance Devices</a></li>
-                            }
-                            @if (User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("Teacher"))
-                            {
-                                <li class="nav-item"><a class="nav-link" asp-controller="AcademicStructure" asp-action="Index">Classes & Subjects</a></li>
-                            }
-                            <li class="nav-item"><a class="nav-link" asp-controller="Account" asp-action="ChangePassword">Change Password</a></li>
-                        }
-                    </ul>
-                    <partial name="_LoginPartial" />
+<body class="@(User.Identity?.IsAuthenticated == true ? "sms-app-body" : "bg-light")">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <partial name="_SvgSprite" />
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <aside class="sms-sidebar d-none d-lg-flex">
+            <a class="sms-brand" asp-controller="Dashboard" asp-action="Index">
+                <span class="sms-brand-mark">@(string.IsNullOrWhiteSpace(shellSchool?.Name) ? "SM" : string.Join("", shellSchool.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(2).Select(x => char.ToUpperInvariant(x[0]))))</span>
+                <span class="sms-brand-copy"><strong>@(shellSchool?.Name ?? "School Management")</strong><small>School Management System</small></span>
+            </a>
+            <partial name="_AppNavigation" />
+            <div class="sms-sidebar-footer">
+                <div class="sms-user-mini">
+                    <span class="sms-avatar">@initials</span>
+                    <span class="min-w-0"><strong class="text-truncate d-block">@(shellUser?.FullName ?? User.Identity?.Name)</strong><small class="text-truncate d-block">@(shellRoles.FirstOrDefault() ?? "User")</small></span>
                 </div>
             </div>
-        </nav>
-    </header>
+        </aside>
 
-    <div class="container pb-5">
-        @if (TempData["Success"] is string success)
-        {
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                @success
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="offcanvas offcanvas-start sms-mobile-drawer" tabindex="-1" id="smsMobileNav" aria-labelledby="smsMobileNavLabel">
+            <div class="offcanvas-header">
+                <a class="sms-brand mb-0" asp-controller="Dashboard" asp-action="Index">
+                    <span class="sms-brand-mark">SM</span><span class="sms-brand-copy"><strong id="smsMobileNavLabel">@(shellSchool?.Name ?? "School Management")</strong><small>School Management System</small></span>
+                </a>
+                <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
             </div>
-        }
-        @if (TempData["Info"] is string info)
-        {
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                @info
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-        @if (TempData["Error"] is string error)
-        {
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                @error
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        }
-        <main role="main">
-            @RenderBody()
-        </main>
-    </div>
+            <div class="offcanvas-body p-0"><partial name="_AppNavigation" /></div>
+        </div>
 
-    <footer class="border-top bg-white text-muted py-3">
-        <div class="container">&copy; 2026 - School Management System</div>
-    </footer>
+        <div class="sms-app-shell">
+            <header class="sms-topbar">
+                <div class="d-flex align-items-center gap-3 min-w-0">
+                    <button class="sms-icon-btn d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#smsMobileNav" aria-label="Open navigation"><svg><use href="#i-menu"></use></svg></button>
+                    <div class="min-w-0">
+                        <div class="sms-topbar-title text-truncate">@pageTitle</div>
+                        <div class="sms-topbar-subtitle d-none d-sm-block">@(shellSchool?.Name ?? "School Management System")</div>
+                    </div>
+                </div>
+                <div class="sms-topbar-actions">
+                    <span class="sms-connection-pill d-none d-sm-inline-flex" data-pwa-connection aria-live="polite"><span></span><strong>Online</strong></span>
+                    <button class="sms-icon-btn sms-install-trigger d-none" type="button" data-pwa-install title="Install School App" aria-label="Install School App"><svg><use href="#i-install"></use></svg></button>
+                    <div class="dropdown">
+                        <button class="sms-profile-button dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="sms-avatar">@initials</span>
+                            <span class="d-none d-md-block text-start"><strong>@(shellUser?.FullName ?? "User")</strong><small>@(shellRoles.FirstOrDefault() ?? "User")</small></span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end sms-profile-menu shadow-sm">
+                            <li><div class="px-3 py-2"><strong class="d-block">@(shellUser?.FullName ?? "User")</strong><small class="text-secondary">@(shellUser?.Email ?? "")</small></div></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-controller="MobileApp" asp-action="Index">Mobile app & offline</a></li>
+                            <li><button class="dropdown-item d-none" type="button" data-pwa-install>Install app</button></li>
+                            <li><a class="dropdown-item" asp-controller="Account" asp-action="ChangePassword">Change password</a></li>
+                            <li>
+                                <form asp-controller="Account" asp-action="Logout" method="post">
+                                    <button class="dropdown-item text-danger" type="submit">Sign out</button>
+                                </form>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </header>
+
+            <div class="sms-offline-banner" data-pwa-offline-banner hidden role="status" aria-live="polite">
+                <svg><use href="#i-wifi-off"></use></svg>
+                <div><strong>You are offline.</strong><span>Read-only app shell is available. Changes, payments, result publishing and promotions are not queued.</span></div>
+            </div>
+            <main class="sms-main-content" id="main-content" data-module="@ViewContext.RouteData.Values["controller"]">
+                @if (Configuration.GetValue<bool>("DemoData:Enabled") || shellSchool?.RegistrationNumber?.StartsWith("DEMO-", StringComparison.OrdinalIgnoreCase) == true) { <div class="workspace-demo"><strong>Demo workspace</strong> · Sample students and financial records for testing.</div> }
+                @if (TempData["Success"] is string success)
+                {
+                    <div class="alert alert-success alert-dismissible fade show sms-flash" role="alert">@success<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss message"></button></div>
+                }
+                @if (TempData["Info"] is string info)
+                {
+                    <div class="alert alert-info alert-dismissible fade show sms-flash" role="alert">@info<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss message"></button></div>
+                }
+                @if (TempData["Error"] is string error)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show sms-flash" role="alert">@error<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Dismiss message"></button></div>
+                }
+                @RenderBody()
+            </main>
+        </div>
+    }
+    else
+    {
+        <header>
+            <nav class="navbar navbar-expand-lg navbar-dark sms-navbar shadow-sm mb-4">
+                <div class="container"><a class="navbar-brand fw-semibold" asp-controller="Home" asp-action="Index">School Management System</a><button class="btn btn-sm btn-outline-light d-none" type="button" data-pwa-install>Install App</button></div>
+            </nav>
+        </header>
+        <main class="container pb-5" id="main-content">@RenderBody()</main>
+        <footer class="border-top bg-white text-muted py-3 mt-auto"><div class="container">&copy; 2026 - School Management System</div></footer>
+    }
 
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
+    <script src="~/js/dashboard.js" asp-append-version="true"></script>
+    <script src="~/js/pwa.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

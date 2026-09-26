@@ -1,0 +1,170 @@
+@model School_Management_System.ViewModels.SettingsPageViewModel
+@{
+    ViewData["Title"] = "Settings & Master Data";
+    var months = System.Globalization.CultureInfo.InvariantCulture.DateTimeFormat.MonthNames;
+}
+
+<div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center gap-3 mb-4">
+    <div>
+        <div class="sms-eyebrow">Administration / </div>
+        <h1 class="h2 mb-1">Settings & Master Data</h1>
+        <p class="text-secondary mb-0">Central rules for numbering, fees, attendance, print documents, backup, security and integrations.</p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a class="btn btn-outline-secondary" asp-controller="SchoolSetup" asp-action="Index">School Profile</a>
+        <a class="btn btn-outline-secondary" asp-controller="AcademicSessions" asp-action="Index">Academic Sessions</a>
+        <button class="btn btn-primary" type="submit" form="settingsForm">Save Settings</button>
+    </div>
+</div>
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">School</div><div class="h5 mt-2 mb-1">@Model.SchoolName</div><div class="text-secondary small">@(Model.ActiveSessionName ?? "No active session")</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Fee master</div><div class="display-6 fw-bold">@Model.FeeHeadCount</div><div class="text-secondary small">active fee heads</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Grading master</div><div class="display-6 fw-bold">@Model.GradingRuleCount</div><div class="text-secondary small">rules in active session</div></div></div></div>
+    <div class="col-md-6 col-xl-3"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small text-uppercase fw-semibold">Last updated</div><div class="h5 mt-2 mb-1">@(Model.LastUpdatedAtUtc.HasValue ? Model.LastUpdatedAtUtc.Value.ToLocalTime().ToString("dd MMM yyyy") : "Defaults")</div><div class="text-secondary small">@(Model.LastUpdatedBy ?? "System defaults")</div></div></div></div>
+</div>
+
+<form id="settingsForm" asp-action="Index" method="post" enctype="multipart/form-data">
+    <input asp-for="Id" type="hidden" />
+    <ul class="nav nav-pills flex-nowrap overflow-auto gap-2 mb-4" id="settingsTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#numbering" type="button">Numbering</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#fees" type="button">Fees</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#attendance" type="button">Attendance</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#print" type="button">Results & Print</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#backup" type="button">Backup</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#security" type="button">Security</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#integrations" type="button">Integrations</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#masterdata" type="button">Master Data</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="numbering">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Numbering & Fiscal Rules</h2><p class="text-secondary mb-0">New records use these formats; existing numbers are never rewritten.</p></div><div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-4"><label asp-for="AdmissionNumberPrefix" class="form-label"></label><input asp-for="AdmissionNumberPrefix" class="form-control" /><span asp-validation-for="AdmissionNumberPrefix" class="text-danger small"></span><div class="form-text">Example: @Model.AdmissionNumberPrefix-2026-0001</div></div>
+                    <div class="col-md-4"><label asp-for="AdmissionNumberDigits" class="form-label"></label><input asp-for="AdmissionNumberDigits" class="form-control" /><span asp-validation-for="AdmissionNumberDigits" class="text-danger small"></span></div>
+                    <div class="col-md-4"><label asp-for="FiscalYearStartMonth" class="form-label"></label><select asp-for="FiscalYearStartMonth" class="form-select">@for (var i = 1; i <= 12; i++) { <option value="@i">@months[i - 1]</option> }</select></div>
+                    <div class="col-md-4"><label asp-for="ChallanNumberPrefix" class="form-label"></label><input asp-for="ChallanNumberPrefix" class="form-control" /><span asp-validation-for="ChallanNumberPrefix" class="text-danger small"></span></div>
+                    <div class="col-md-4"><label asp-for="ReceiptNumberPrefix" class="form-label"></label><input asp-for="ReceiptNumberPrefix" class="form-control" /><span asp-validation-for="ReceiptNumberPrefix" class="text-danger small"></span></div>
+                    <div class="col-md-4"><label asp-for="FinancialNumberDigits" class="form-label"></label><input asp-for="FinancialNumberDigits" class="form-control" /></div>
+                    <div class="col-md-6"><label asp-for="SchoolTimeZoneId" class="form-label"></label><input asp-for="SchoolTimeZoneId" class="form-control" /><div class="form-text">Pakistan default: Asia/Karachi. Used by scheduled jobs and date-sensitive rules.</div></div>
+                </div>
+            </div></div>
+        </div>
+
+        <div class="tab-pane fade" id="fees">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between align-items-start gap-3"><div><h2 class="h5 mb-1">Fee Policy</h2><p class="text-secondary mb-0">Defaults used by the challan engine and monthly scheduler.</p></div><a class="btn btn-sm btn-outline-primary" asp-controller="Fees" asp-action="Index">Open Fees Module</a></div><div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-4"><label asp-for="DefaultFeeDueDay" class="form-label"></label><input asp-for="DefaultFeeDueDay" class="form-control" /></div>
+                    <div class="col-md-4"><label asp-for="LateFeeFixedAmount" class="form-label"></label><div class="input-group"><span class="input-group-text">Rs.</span><input asp-for="LateFeeFixedAmount" class="form-control" /></div></div>
+                    <div class="col-md-4"><label asp-for="LateFeeGraceDays" class="form-label"></label><input asp-for="LateFeeGraceDays" class="form-control" /></div>
+                    <div class="col-md-6"><div class="form-check form-switch mt-3"><input asp-for="ApplyLateFeeOnCollection" class="form-check-input" /><label asp-for="ApplyLateFeeOnCollection" class="form-check-label"></label></div></div>
+                    <div class="col-md-6"><div class="form-check form-switch mt-3"><input asp-for="AutoGenerateMonthlyChallans" class="form-check-input" /><label asp-for="AutoGenerateMonthlyChallans" class="form-check-label"></label></div></div>
+                    <div class="col-md-4"><label asp-for="MonthlyChallanGenerationDay" class="form-label"></label><input asp-for="MonthlyChallanGenerationDay" class="form-control" /></div>
+                </div>
+                <div class="alert alert-light border mt-4 mb-0"><strong>Master data:</strong> Fee heads, class/student fee structures and student discounts are managed in Fees.</div>
+            </div></div>
+        </div>
+
+        <div class="tab-pane fade" id="attendance">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Attendance Rules</h2><p class="text-secondary mb-0">Controls teacher correction windows, low-attendance alerts and allowed manual statuses.</p></div><div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6"><label asp-for="TeacherAttendanceEditCutoffHours" class="form-label"></label><input asp-for="TeacherAttendanceEditCutoffHours" class="form-control" /><div class="form-text">Principal/Admin can still correct later with an audit reason.</div></div>
+                    <div class="col-md-6"><label asp-for="LowAttendanceThresholdPercent" class="form-label"></label><div class="input-group"><input asp-for="LowAttendanceThresholdPercent" class="form-control" /><span class="input-group-text">%</span></div></div>
+                    <div class="col-12"><hr /></div>
+                    <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="AttendanceAllowLate" class="form-check-input" /><label asp-for="AttendanceAllowLate" class="form-check-label"></label></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="AttendanceAllowLeave" class="form-check-input" /><label asp-for="AttendanceAllowLeave" class="form-check-label"></label></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="AttendanceAllowHalfDay" class="form-check-input" /><label asp-for="AttendanceAllowHalfDay" class="form-check-label"></label></div></div>
+                    <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="AttendanceAllowNoClass" class="form-check-input" /><label asp-for="AttendanceAllowNoClass" class="form-check-label"></label></div></div>
+                </div>
+            </div></div>
+        </div>
+
+        <div class="tab-pane fade" id="print">
+            <div class="row g-3">
+                <div class="col-xl-8"><div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Result Card & Printable Documents</h2><p class="text-secondary mb-0">School logo remains managed in School Profile; signature and footer preferences live here.</p></div><div class="card-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6"><div class="form-check form-switch"><input asp-for="ResultCardShowAttendance" class="form-check-input" /><label asp-for="ResultCardShowAttendance" class="form-check-label"></label></div></div>
+                        <div class="col-md-6"><div class="form-check form-switch"><input asp-for="ResultCardShowClassPosition" class="form-check-input" /><label asp-for="ResultCardShowClassPosition" class="form-check-label"></label></div></div>
+                        <div class="col-md-6"><label asp-for="ClassTeacherSignatureLabel" class="form-label"></label><input asp-for="ClassTeacherSignatureLabel" class="form-control" /></div>
+                        <div class="col-md-6"><label asp-for="PrincipalSignatureLabel" class="form-label"></label><input asp-for="PrincipalSignatureLabel" class="form-control" /></div>
+                        <div class="col-12"><label asp-for="ResultCardFooterText" class="form-label"></label><textarea asp-for="ResultCardFooterText" class="form-control" rows="2"></textarea></div>
+                        <div class="col-md-6"><label asp-for="PayslipFooterText" class="form-label"></label><textarea asp-for="PayslipFooterText" class="form-control" rows="2"></textarea></div>
+                        <div class="col-md-6"><label asp-for="GeneralPrintFooterText" class="form-label"></label><textarea asp-for="GeneralPrintFooterText" class="form-control" rows="2"></textarea></div>
+                    </div>
+                </div></div></div>
+                <div class="col-xl-4"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Signature Images</h2><p class="text-secondary mb-0">PNG/JPG/WEBP, max 2 MB.</p></div><div class="card-body p-4">
+                    <label asp-for="PrincipalSignatureFile" class="form-label"></label><input asp-for="PrincipalSignatureFile" class="form-control mb-2" accept="image/png,image/jpeg,image/webp" />
+                    @if (!string.IsNullOrWhiteSpace(Model.PrincipalSignaturePath)) { <div class="border rounded p-2 mb-3 text-center"><img src="@Model.PrincipalSignaturePath" alt="Principal signature" style="max-height:65px;max-width:100%" /></div> }
+                    <label asp-for="ClassTeacherSignatureFile" class="form-label"></label><input asp-for="ClassTeacherSignatureFile" class="form-control mb-2" accept="image/png,image/jpeg,image/webp" />
+                    @if (!string.IsNullOrWhiteSpace(Model.ClassTeacherSignaturePath)) { <div class="border rounded p-2 text-center"><img src="@Model.ClassTeacherSignaturePath" alt="Class teacher signature" style="max-height:65px;max-width:100%" /></div> }
+                </div></div></div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="backup">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4 d-flex justify-content-between gap-3"><div><h2 class="h5 mb-1">Backup & Recovery Policy</h2><p class="text-secondary mb-0">Choose the backup schedule and how long backups are kept.</p></div><a class="btn btn-sm btn-outline-primary align-self-start" asp-controller="Backup" asp-action="Index">Open Backup Center</a></div><div class="card-body p-4"><div class="row g-3">
+                <div class="col-md-4"><div class="form-check form-switch mt-4"><input asp-for="ScheduledBackupsEnabled" class="form-check-input" /><label asp-for="ScheduledBackupsEnabled" class="form-check-label"></label></div></div>
+                <div class="col-md-4"><label asp-for="BackupHourLocal" class="form-label"></label><input asp-for="BackupHourLocal" class="form-control" /><div class="form-text">0–23, using school time zone.</div></div>
+                <div class="col-md-4"><label asp-for="BackupRetentionDays" class="form-label"></label><input asp-for="BackupRetentionDays" class="form-control" /></div>
+                <div class="col-12"><div class="form-check form-switch"><input asp-for="AllowInAppRestore" class="form-check-input" /><label asp-for="AllowInAppRestore" class="form-check-label"></label></div><div class="form-text">Restore still requires privileged role, current password, reason and explicit confirmation.</div></div>
+            </div></div></div>
+        </div>
+
+        <div class="tab-pane fade" id="security">
+            <div class="card border-0 shadow-sm"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Security Policy</h2><p class="text-secondary mb-0">Applied to new password changes/resets and authenticated inactivity sessions.</p></div><div class="card-body p-4"><div class="row g-3">
+                <div class="col-md-6"><label asp-for="SessionTimeoutMinutes" class="form-label"></label><input asp-for="SessionTimeoutMinutes" class="form-control" /><div class="form-text">Inactive signed-in users are required to log in again after this period.</div></div>
+                <div class="col-md-6"><label asp-for="PasswordRequiredLength" class="form-label"></label><input asp-for="PasswordRequiredLength" class="form-control" /></div>
+                <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="PasswordRequireDigit" class="form-check-input" /><label asp-for="PasswordRequireDigit" class="form-check-label"></label></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="PasswordRequireUppercase" class="form-check-input" /><label asp-for="PasswordRequireUppercase" class="form-check-label"></label></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="PasswordRequireLowercase" class="form-check-input" /><label asp-for="PasswordRequireLowercase" class="form-check-label"></label></div></div>
+                <div class="col-sm-6 col-lg-3"><div class="form-check form-switch"><input asp-for="PasswordRequireSpecialCharacter" class="form-check-input" /><label asp-for="PasswordRequireSpecialCharacter" class="form-check-label"></label></div></div>
+            </div></div></div>
+        </div>
+
+        <div class="tab-pane fade" id="integrations">
+            <div class="row g-3">
+                <div class="col-xl-7"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Notification Providers</h2><p class="text-secondary mb-0">Provider names can be selected here. API keys/passwords must remain in secure server configuration, not in the database.</p></div><div class="card-body p-4"><div class="row g-3">
+                    <div class="col-md-4"><div class="form-check form-switch mb-2"><input asp-for="EmailNotificationsEnabled" class="form-check-input" /><label asp-for="EmailNotificationsEnabled" class="form-check-label"></label></div><label asp-for="EmailProviderName" class="form-label">Email provider</label><input asp-for="EmailProviderName" class="form-control" placeholder="e.g. SMTP / SendGrid" /></div>
+                    <div class="col-md-4"><div class="form-check form-switch mb-2"><input asp-for="SmsNotificationsEnabled" class="form-check-input" /><label asp-for="SmsNotificationsEnabled" class="form-check-label"></label></div><label asp-for="SmsProviderName" class="form-label">SMS provider</label><input asp-for="SmsProviderName" class="form-control" placeholder="SMS provider" /></div>
+                    <div class="col-md-4"><div class="form-check form-switch mb-2"><input asp-for="WhatsAppNotificationsEnabled" class="form-check-input" /><label asp-for="WhatsAppNotificationsEnabled" class="form-check-label"></label></div><label asp-for="WhatsAppProviderName" class="form-label">WhatsApp provider</label><input asp-for="WhatsAppProviderName" class="form-control" placeholder="WhatsApp provider" /></div>
+                </div></div></div></div>
+                <div class="col-xl-5"><div class="card border-0 shadow-sm h-100"><div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Feature Toggles</h2><p class="text-secondary mb-0">Prepare optional modules without making them mandatory for every school.</p></div><div class="card-body p-4 d-grid gap-3">
+                    <div class="form-check form-switch"><input asp-for="EnableBiometricAttendance" class="form-check-input" /><label asp-for="EnableBiometricAttendance" class="form-check-label"></label></div>
+                    <div class="form-check form-switch"><input asp-for="EnableCameraAttendance" class="form-check-input" /><label asp-for="EnableCameraAttendance" class="form-check-label"></label></div>
+                    <div class="form-check form-switch"><input asp-for="EnableParentStudentPortal" class="form-check-input" /><label asp-for="EnableParentStudentPortal" class="form-check-label"></label></div>
+                    <div class="form-check form-switch"><input asp-for="EnableOnlinePayments" class="form-check-input" /><label asp-for="EnableOnlinePayments" class="form-check-label"></label></div>
+                    <div class="form-check form-switch"><input asp-for="EnablePushNotifications" class="form-check-input" /><label asp-for="EnablePushNotifications" class="form-check-label"></label></div>
+                </div></div></div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="masterdata">
+            <div class="row g-3">
+                <div class="col-md-6 col-xl-4"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><div class="text-muted small text-uppercase fw-semibold">School identity</div><h3 class="h5 mt-2">Logo & Document Footers</h3><p class="text-secondary">School logo, challan footer and receipt footer are already centralized in the School Profile.</p><a asp-controller="SchoolSetup" asp-action="Index" class="btn btn-outline-primary">Manage School Profile</a></div></div></div>
+                <div class="col-md-6 col-xl-4"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><div class="text-muted small text-uppercase fw-semibold">Fee master data</div><h3 class="h5 mt-2">Fee Heads & Discounts</h3><p class="text-secondary">Manage fee heads, fee structures and student discounts in Fees.</p><a asp-controller="Fees" asp-action="Index" class="btn btn-outline-primary">Manage Fee Master</a></div></div></div>
+                <div class="col-md-6 col-xl-4"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><div class="text-muted small text-uppercase fw-semibold">Academic master data</div><h3 class="h5 mt-2">Grading Scheme</h3><p class="text-secondary">Grading schemes remain academic-session specific so historical result cards are not silently rewritten.</p><a asp-controller="AcademicSessions" asp-action="Index" class="btn btn-outline-primary">Manage Grading</a></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mt-4"><button class="btn btn-primary btn-lg px-4" type="submit">Save All Settings</button></div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const hash = window.location.hash;
+            if (hash) {
+                const btn = document.querySelector(`[data-bs-target="${hash}"]`);
+                if (btn) bootstrap.Tab.getOrCreateInstance(btn).show();
+            }
+            document.querySelectorAll('#settingsTabs button[data-bs-toggle="pill"]').forEach(btn => {
+                btn.addEventListener('shown.bs.tab', e => history.replaceState(null, '', e.target.dataset.bsTarget));
+            });
+        })();
+    </script>
+}

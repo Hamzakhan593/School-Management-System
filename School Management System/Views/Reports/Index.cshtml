@@ -1,0 +1,102 @@
+@{
+    ViewData["Title"] = "Reports Center";
+    var leadership = User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin");
+    var admissions = leadership || User.IsInRole("Receptionist");
+    var attendance = leadership || User.IsInRole("Teacher");
+    var finance = leadership || User.IsInRole("Accountant");
+    var academic = leadership || User.IsInRole("Teacher") || User.IsInRole("ExamController");
+    var staffAccess = leadership || User.IsInRole("HR");
+    var payrollAccess = leadership || User.IsInRole("HR") || User.IsInRole("Accountant");
+}
+
+<section class="sms-page-head">
+    <div><div class="sms-eyebrow">Management intelligence</div><h1>Reports Center</h1><p>One place for operational, academic, finance and management reporting.</p></div>
+    @if (leadership) { <a class="btn btn-primary sms-btn" asp-action="Executive">Executive summary</a> }
+</section>
+
+@if (leadership || admissions)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon blue"><svg><use href="#i-students"></use></svg></span><div><h2>Students & Admissions</h2><p>Enrollment, student register and admission pipeline.</p></div></div>
+        <div class="sms-report-grid">
+            <a class="sms-report-card" asp-action="StudentRegister"><strong>Active Student Register</strong><span>Class-wise active students with admission, roll, guardian and contact details.</span><em>Open report →</em></a>
+            @if (admissions)
+            {
+                <a class="sms-report-card" asp-controller="Admissions" asp-action="Index"><strong>Enquiry Conversion</strong><span>Admission enquiries, follow-ups and current pipeline stages.</span><em>Open report →</em></a>
+                <a class="sms-report-card" asp-controller="Admissions" asp-action="Applications"><strong>Admission Applications</strong><span>Submitted, admitted and pending applications.</span><em>Open report →</em></a>
+            }
+        </div>
+    </section>
+}
+
+@if (attendance || staffAccess)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon green"><svg><use href="#i-attendance"></use></svg></span><div><h2>Attendance</h2><p>Daily and monthly attendance visibility.</p></div></div>
+        <div class="sms-report-grid">
+            @if (attendance)
+            {
+                <a class="sms-report-card" asp-controller="Attendance" asp-action="MonthlyReport"><strong>Student Monthly Attendance</strong><span>Student percentages, absences, late days and low-attendance follow-up.</span><em>Open report →</em></a>
+            }
+            @if (staffAccess)
+            {
+                <a class="sms-report-card" asp-controller="StaffAttendance" asp-action="MonthlyReport"><strong>Staff Monthly Attendance</strong><span>Monthly staff presence, absence, leave and late summary.</span><em>Open report →</em></a>
+            }
+        </div>
+    </section>
+}
+
+@if (finance)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon violet"><svg><use href="#i-fees"></use></svg></span><div><h2>Fees & Finance</h2><p>Collections, outstanding balances, expenses and financial control.</p></div></div>
+        <div class="sms-report-grid">
+            <a class="sms-report-card" asp-controller="Fees" asp-action="DailyCollection"><strong>Daily Fee Collection</strong><span>Cashier collection with payment method and receipt-level visibility.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Fees" asp-action="Defaulters"><strong>Outstanding / Defaulters</strong><span>Overdue students filtered by class, amount and overdue period.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Fees" asp-action="Ledger"><strong>Student Fee Ledger</strong><span>Student-wise challans, receipts, payments and running balances.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Fees" asp-action="Challans"><strong>Challan Generation & Status</strong><span>Issued, paid, overdue and batch-generated challans.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Expenses" asp-action="Report"><strong>Expense Report</strong><span>Monthly and category-wise approved school expenses.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Expenses" asp-action="FinancialSummary"><strong>Monthly Financial Summary</strong><span>Fee income and other income versus payroll and operating expenses.</span><em>Open report →</em></a>
+        </div>
+    </section>
+}
+
+@if (academic)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon amber"><svg><use href="#i-exams"></use></svg></span><div><h2>Exams & Results</h2><p>Exam progress, class results, result cards and subject performance.</p></div></div>
+        <div class="sms-report-grid">
+            <a class="sms-report-card" asp-controller="Results" asp-action="Index"><strong>Published Results</strong><span>Open exams with published class results and result-card actions.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Exams" asp-action="Index"><strong>Exam & Marks Status</strong><span>Draft, marks-entry, locked and published exam workflows.</span><em>Open report →</em></a>
+        </div>
+    </section>
+}
+
+@if (staffAccess || payrollAccess)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon teal"><svg><use href="#i-staff"></use></svg></span><div><h2>Staff & Payroll</h2><p>Employee records, attendance, payroll and salary history.</p></div></div>
+        <div class="sms-report-grid">
+            @if (staffAccess)
+            {
+                <a class="sms-report-card" asp-controller="Staff" asp-action="Index"><strong>Staff Register</strong><span>Active/inactive employee register with department and designation.</span><em>Open report →</em></a>
+            }
+            @if (payrollAccess)
+            {
+                <a class="sms-report-card" asp-controller="Payroll" asp-action="Index"><strong>Payroll Summary</strong><span>Monthly payroll runs, posting status, totals and payslips.</span><em>Open report →</em></a>
+            }
+        </div>
+    </section>
+}
+
+@if (leadership)
+{
+    <section class="sms-report-section">
+        <div class="sms-report-section-head"><span class="report-group-icon slate"><svg><use href="#i-reports"></use></svg></span><div><h2>Control & Audit</h2><p>Management oversight and sensitive system activity.</p></div></div>
+        <div class="sms-report-grid">
+            <a class="sms-report-card" asp-controller="Promotions" asp-action="Index"><strong>Annual Promotion / Session Rollover</strong><span>Review promotion batches, hold decisions, archived sessions and next-session activation.</span><em>Open control →</em></a>
+            <a class="sms-report-card" asp-controller="Backup" asp-action="AuditLogs"><strong>User Activity / Audit</strong><span>Search sensitive actions with user, entity, IP/device context and before/after values where available.</span><em>Open report →</em></a>
+            <a class="sms-report-card" asp-controller="Backup" asp-action="Index"><strong>Backup & Recovery Status</strong><span>Latest backup health, verification, restore history and retention controls.</span><em>Open control →</em></a>
+        </div>
+    </section>
+}

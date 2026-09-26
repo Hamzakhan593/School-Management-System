@@ -1,0 +1,69 @@
+@model School_Management_System.ViewModels.ResultsIndexViewModel
+@{
+    ViewData["Title"] = "Results & Result Cards";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1">Results & Result Cards</h2>
+        <div class="text-muted">Calculate, review, publish and print stable result snapshots.</div>
+    </div>
+    <a asp-controller="Exams" asp-action="Index" class="btn btn-outline-secondary">Exams & Marks</a>
+</div>
+
+<form method="get" class="card card-body mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label">Academic Session</label>
+            <select name="sessionId" class="form-select">
+                @foreach (var session in Model.Sessions)
+                {
+                    <option value="@session.Id" selected="@(Model.SelectedSessionId == session.Id)">@session.Name (@session.Status)</option>
+                }
+            </select>
+        </div>
+        <div class="col-auto"><button class="btn btn-primary">Load</button></div>
+    </div>
+</form>
+
+@if (Model.Exams.Count == 0)
+{
+    <div class="alert alert-info">No exam with locked/published marks is available for this session. Complete marks verification and lock the exam first.</div>
+}
+else
+{
+    @foreach (var exam in Model.Exams)
+    {
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <strong>@exam.Title</strong>
+                    <span class="text-muted ms-2">@exam.ExamType · @exam.AcademicSession.Name</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    @if (exam.Status == ExamStatus.Published)
+                    {
+                        <a asp-action="AllResultCardsPdf" asp-route-examId="@exam.Id" class="btn btn-sm btn-success">All Result Cards PDF</a>
+                    }
+                    <span class="badge @(exam.Status == ExamStatus.Published ? "bg-success" : "bg-warning text-dark")">@exam.Status</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    @foreach (var examClass in exam.ExamClasses.OrderBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.SchoolClass.Name))
+                    {
+                        <div class="col-md-4">
+                            <a class="btn btn-outline-primary w-100" asp-action="ClassResult" asp-route-examId="@exam.Id" asp-route-classId="@examClass.SchoolClassId">
+                                @examClass.SchoolClass.Name Result
+                            </a>
+                        </div>
+                    }
+                </div>
+                @if (exam.ExamClasses.Count == 0)
+                {
+                    <div class="text-muted">No classes are assigned to this exam.</div>
+                }
+            </div>
+        </div>
+    }
+}

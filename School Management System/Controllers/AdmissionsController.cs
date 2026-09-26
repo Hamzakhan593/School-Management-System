@@ -676,6 +676,7 @@ public class AdmissionsController : Controller
             .OrderByDescending(x => x.StartDate)
             .ToListAsync();
         ViewBag.AcademicSessions = new SelectList(sessions, "Id", "Name", selected);
+        ViewBag.SchoolClasses = await _db.SchoolClasses.AsNoTracking().Where(x => x.SchoolId == schoolId && x.IsActive).OrderBy(x => x.SortOrder).Select(x => x.Name).ToListAsync();
     }
 
     private static string Csv(string? value)

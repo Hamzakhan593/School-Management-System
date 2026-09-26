@@ -1,0 +1,34 @@
+@model School_Management_System.ViewModels.StaffCameraAttendanceViewModel
+@{
+    ViewData["Title"] = "Staff Camera Attendance";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Staff Camera Attendance</h1><p class="text-muted mb-0">Camera-assisted manual verification fallback. The browser image is not uploaded or stored by this page.</p></div>
+    <a class="btn btn-outline-secondary" asp-action="Index">Back to Attendance</a>
+</div>
+<div class="row g-4">
+    <div class="col-lg-7"><div class="card shadow-sm"><div class="card-body"><div class="ratio ratio-16x9 bg-dark rounded overflow-hidden"><video id="camera" autoplay playsinline></video></div><div id="cameraMessage" class="form-text mt-2">Allow camera access when prompted.</div></div></div></div>
+    <div class="col-lg-5"><div class="card shadow-sm"><div class="card-header fw-semibold">Confirm Identity</div><div class="card-body">
+        <div class="alert alert-warning small">Only confirm after an authorized user visually matches the person to the selected staff record. This is not automatic face recognition.</div>
+        <form method="post" asp-action="CameraConfirm">
+            @Html.AntiForgeryToken()
+            <div class="mb-3"><label class="form-label">Staff Member</label><select class="form-select" asp-for="StaffId" required><option value="">-- Select staff --</option>@foreach(var s in Model.StaffMembers){<option value="@s.Id">@s.EmployeeId - @s.FullName</option>}</select></div>
+            <button class="btn btn-primary w-100" type="submit">Identity Verified — Mark Present</button>
+        </form>
+    </div></div></div>
+</div>
+@section Scripts {
+<script>
+(async () => {
+    const video = document.getElementById('camera');
+    const message = document.getElementById('cameraMessage');
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        video.srcObject = stream;
+        message.textContent = 'Camera is active. No video is uploaded by this page.';
+    } catch (e) {
+        message.textContent = 'Camera permission was not granted or no camera is available.';
+    }
+})();
+</script>
+}

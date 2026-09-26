@@ -1,0 +1,110 @@
+@model School_Management_System.ViewModels.PromotionIndexViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Annual Promotion & Session Rollover";
+}
+
+<section class="sms-page-head">
+    <div>
+        <div class="sms-eyebrow">Academic year control</div>
+        <h1>Annual Promotion & Session Rollover</h1>
+        <p>Create the next academic session, carry reusable setup forward, review every student decision, then promote in one controlled transaction.</p>
+    </div>
+    <a class="btn btn-primary sms-btn" asp-action="Create">Start New Rollover</a>
+</section>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-2">Sessions</div>
+            <div class="display-6 fw-bold">@Model.Sessions.Count</div>
+            <div class="text-muted">Historical sessions stay available; rollover never overwrites old enrollment history.</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-2">Active session</div>
+            @{ var active = Model.Sessions.FirstOrDefault(x => x.Status == AcademicSessionStatus.Active); }
+            <div class="h4 fw-bold mb-1">@(active?.Name ?? "None")</div>
+            <div class="text-muted">Only one session remains active after finalization.</div>
+        </div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-2">Rollover batches</div>
+            <div class="display-6 fw-bold">@Model.Batches.Count</div>
+            <div class="text-muted">Each source session is protected from duplicate rollover creation.</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4">
+        <h2 class="h5 mb-1">Rollover history</h2>
+        <p class="text-muted mb-0">Open a batch to review, commit, roll back safely, or finalize it.</p>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>From</th><th>To</th><th>Students</th><th>Holds</th><th>Status</th><th>Created</th><th class="text-end">Action</th></tr>
+            </thead>
+            <tbody>
+            @foreach (var batch in Model.Batches)
+            {
+                var badge = batch.Status switch
+                {
+                    PromotionBatchStatus.Finalized => "bg-success",
+                    PromotionBatchStatus.Completed => "bg-primary",
+                    PromotionBatchStatus.PreviewReady => "bg-info text-dark",
+                    PromotionBatchStatus.RolledBack => "bg-secondary",
+                    _ => "bg-warning text-dark"
+                };
+                <tr>
+                    <td class="fw-semibold">@batch.SourceSession</td>
+                    <td>@batch.TargetSession</td>
+                    <td>@batch.StudentCount</td>
+                    <td>@batch.HoldCount</td>
+                    <td><span class="badge @badge">@batch.Status</span></td>
+                    <td>@batch.CreatedAtUtc.ToLocalTime().ToString("dd MMM yyyy")</td>
+                    <td class="text-end">
+                        @if (batch.StudentCount > 0)
+                        {
+                            <a class="btn btn-sm btn-outline-primary" asp-action="Preview" asp-route-id="@batch.Id">Open</a>
+                        }
+                        else
+                        {
+                            <form asp-action="Prepare" asp-route-id="@batch.Id" method="post" class="d-inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-primary">Prepare Preview</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+            @if (!Model.Batches.Any())
+            {
+                <tr><td colspan="7" class="text-center text-muted py-5">No rollover has been created yet.</td></tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-0 pt-4 px-4"><h2 class="h5 mb-1">Academic sessions</h2><p class="text-muted mb-0">Current and historical session status.</p></div>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead class="table-light"><tr><th>Session</th><th>Dates</th><th>Status</th></tr></thead>
+            <tbody>
+            @foreach (var session in Model.Sessions)
+            {
+                <tr>
+                    <td class="fw-semibold">@session.Name</td>
+                    <td>@session.StartDate.ToString("dd MMM yyyy") – @session.EndDate.ToString("dd MMM yyyy")</td>
+                    <td><span class="badge @(session.Status == AcademicSessionStatus.Active ? "bg-success" : session.Status == AcademicSessionStatus.Draft ? "bg-warning text-dark" : "bg-secondary")">@session.Status</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

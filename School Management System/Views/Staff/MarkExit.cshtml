@@ -1,0 +1,38 @@
+@model School_Management_System.ViewModels.StaffExitViewModel
+@{
+    ViewData["Title"] = "Mark Staff Exit";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div><h1 class="h3 mb-1">Record Staff Exit</h1><p class="text-muted mb-0">@Model.FullName · @Model.EmployeeId</p></div>
+    <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.StaffId">Back</a>
+</div>
+
+<div class="alert alert-warning">This does not delete the staff member. Their profile, documents and historical assignments remain available.</div>
+
+<div class="card shadow-sm">
+    <div class="card-body p-lg-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <input asp-for="StaffId" type="hidden" />
+            <input asp-for="EmployeeId" type="hidden" />
+            <input asp-for="FullName" type="hidden" />
+            <div class="row g-3">
+                <div class="col-md-4"><label asp-for="ExitDate" class="form-label"></label><input asp-for="ExitDate" class="form-control" /><span asp-validation-for="ExitDate" class="text-danger"></span></div>
+                <div class="col-md-4">
+                    <label asp-for="Status" class="form-label"></label>
+                    <select asp-for="Status" class="form-select">
+                        <option value="@((int)StaffStatus.Resigned)">Resigned</option>
+                        <option value="@((int)StaffStatus.Terminated)">Terminated</option>
+                        <option value="@((int)StaffStatus.Retired)">Retired</option>
+                    </select>
+                    <span asp-validation-for="Status" class="text-danger"></span>
+                </div>
+                <div class="col-12"><label asp-for="ExitReason" class="form-label"></label><textarea asp-for="ExitReason" class="form-control" rows="3"></textarea><span asp-validation-for="ExitReason" class="text-danger"></span></div>
+            </div>
+            <div class="d-flex gap-2 mt-4"><button class="btn btn-danger" type="submit">Record Exit</button><a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.StaffId">Cancel</a></div>
+        </form>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

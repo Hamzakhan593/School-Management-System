@@ -48,6 +48,29 @@ public class AttendanceController : Controller
         return View(model);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Sections(int academicSessionId, int schoolClassId, DateTime? attendanceDate, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return Json(Array.Empty<object>());
+        var sheet = await _attendanceService.BuildMarkingSheetAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), academicSessionId, schoolClassId, null, attendanceDate ?? DateTime.Today, cancellationToken);
+        return Json(sheet.Sections.Select(x => new { x.Id, x.Name }));
+    }
+
+    private async Task<IActionResult> RedisplayAttendance(AttendanceMarkingViewModel posted, int schoolId, string userId, CancellationToken ct)
+    {
+        if (Request.HasFormContentType && Request.Form.Any(x => x.Key.EndsWith(".Status") && x.Value == "0"))
+            ModelState.AddModelError(string.Empty, "Some students are unmarked. Choose a status for every student before saving.");
+        var roster = await _attendanceService.BuildMarkingSheetAsync(schoolId, userId, IsManager(), posted.AcademicSessionId, posted.SchoolClassId, posted.SectionId, posted.AttendanceDate, ct);
+        foreach (var row in roster.Students)
+        {
+            var input = posted.Students.FirstOrDefault(x => x.StudentId == row.StudentId);
+            if (input is not null) { row.Status = input.Status; row.Remarks = input.Remarks; }
+        }
+        roster.CorrectionReason = posted.CorrectionReason;
+        return View("Index", roster);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(AttendanceMarkingViewModel model, CancellationToken cancellationToken)
@@ -55,18 +78,7 @@ public class AttendanceController : Controller
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
 
-        if (!ModelState.IsValid)
-        {
-            var firstError = ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage).FirstOrDefault();
-            TempData["Error"] = string.IsNullOrWhiteSpace(firstError) ? "Please correct the attendance form and try again." : firstError;
-            return RedirectToAction(nameof(Index), new
-            {
-                academicSessionId = model.AcademicSessionId,
-                schoolClassId = model.SchoolClassId,
-                sectionId = model.SectionId,
-                attendanceDate = model.AttendanceDate.ToString("yyyy-MM-dd")
-            });
-        }
+        if (!ModelState.IsValid) return await RedisplayAttendance(model, context.Value.SchoolId, context.Value.UserId, cancellationToken);
 
         if (model.AcademicSessionId <= 0 || model.SchoolClassId <= 0)
         {
@@ -89,7 +101,8 @@ public class AttendanceController : Controller
 
         if (!result.Success)
         {
-            TempData["Error"] = result.Message;
+            ModelState.AddModelError(string.Empty, result.Message);
+            return await RedisplayAttendance(model, context.Value.SchoolId, context.Value.UserId, cancellationToken);
         }
         else
         {
@@ -163,3 +176,4 @@ public class AttendanceController : Controller
         return RedirectToAction("Index", "SchoolSetup");
     }
 }
+

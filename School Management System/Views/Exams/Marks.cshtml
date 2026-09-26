@@ -1,0 +1,141 @@
+@model School_Management_System.ViewModels.MarksEntryViewModel
+@{
+    ViewData["Title"] = "Marks Entry";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
+    <div>
+        <h1 class="h3 mb-1">@Model.SubjectName Marks</h1>
+        <div class="text-muted">@Model.ExamTitle · @Model.SessionName · @Model.ClassName @(string.IsNullOrWhiteSpace(Model.SectionName) ? "" : "- " + Model.SectionName)</div>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-light text-dark border">Exam: @Model.ExamStatus</span>
+        <span class="badge bg-secondary">Sheet: @Model.SheetStatus</span>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@Model.ExamId">Exam Setup</a>
+    </div>
+</div>
+
+@if (Model.AvailableSections.Count > 1)
+{
+    <form method="get" class="card card-body shadow-sm mb-3">
+        <input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" />
+        <div class="row align-items-end">
+            <div class="col-md-5">
+                <label class="form-label">Section</label>
+                <select name="sectionId" class="form-select" onchange="this.form.submit()">
+                    @foreach (var sec in Model.AvailableSections)
+                    {
+                        if (Model.SectionId == sec.Id)
+                        {
+                            <option value="@sec.Id" selected>@sec.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@sec.Id">@sec.Name</option>
+                        }
+                    }
+                </select>
+            </div>
+        </div>
+    </form>
+}
+
+<div class="alert alert-light border d-flex flex-wrap gap-4">
+    <span><strong>Maximum:</strong> @Model.MaxMarks</span><span><strong>Pass:</strong> @Model.PassMarks</span>
+    @if (Model.TheoryMaxMarks.HasValue) { <span><strong>Theory Max:</strong> @Model.TheoryMaxMarks</span> }
+    @if (Model.PracticalMaxMarks.HasValue) { <span><strong>Practical Max:</strong> @Model.PracticalMaxMarks</span> }
+</div>
+
+@if (!Model.Rows.Any())
+{
+    <div class="alert alert-warning">No active students were found for this class/section in the exam session.</div>
+}
+else
+{
+    <form asp-action="SaveMarks" method="post" id="marksForm">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="ExamId" /><input type="hidden" asp-for="ExamSubjectId" /><input type="hidden" asp-for="ExamMarksSheetId" /><input type="hidden" asp-for="SchoolClassId" /><input type="hidden" asp-for="SectionId" />
+        <div class="card shadow-sm mb-3"><div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light"><tr><th>#</th><th>Student</th><th>Status</th><th>@(Model.TheoryMaxMarks.HasValue ? "Theory" : "Marks")</th>@if (Model.PracticalMaxMarks.HasValue) { <th>Practical</th> }<th>Remarks</th></tr></thead>
+                <tbody>
+                @for (var i = 0; i < Model.Rows.Count; i++)
+                {
+                    <tr>
+                        <td>@(i + 1)<input type="hidden" asp-for="Rows[i].StudentId" /><input type="hidden" asp-for="Rows[i].StudentEnrollmentId" /></td>
+                        <td><strong>@Model.Rows[i].StudentName</strong><div class="small text-muted">Roll @(Model.Rows[i].RollNumber ?? "-") · @Model.Rows[i].AdmissionNumber</div></td>
+                        <td>
+                            @if (Model.CanEdit)
+                            {
+                                <select asp-for="Rows[i].SpecialStatus" class="form-select form-select-sm mark-status" data-row="@i" asp-items="Html.GetEnumSelectList<MarkSpecialStatus>()"></select>
+                            }
+                            else { <span>@Model.Rows[i].SpecialStatus</span> }
+                        </td>
+                        <td>
+                            @if (Model.CanEdit)
+                            {
+                                <input asp-for="Rows[i].TheoryMarks" class="form-control form-control-sm mark-input mark-theory-@i" type="number" step="0.01" min="0" max="@(Model.TheoryMaxMarks ?? Model.MaxMarks)" />
+                            }
+                            else { <span>@(Model.Rows[i].SpecialStatus == MarkSpecialStatus.None ? Model.Rows[i].TheoryMarks?.ToString("0.##") : "-")</span> }
+                        </td>
+                        @if (Model.PracticalMaxMarks.HasValue)
+                        {
+                            <td>@if (Model.CanEdit) { <input asp-for="Rows[i].PracticalMarks" class="form-control form-control-sm mark-input mark-practical-@i" type="number" step="0.01" min="0" max="@Model.PracticalMaxMarks" /> } else { <span>@(Model.Rows[i].SpecialStatus == MarkSpecialStatus.None ? Model.Rows[i].PracticalMarks?.ToString("0.##") : "-")</span> }</td>
+                        }
+                        <td>@if (Model.CanEdit) { <input asp-for="Rows[i].TeacherRemarks" class="form-control form-control-sm" maxlength="500" /> } else { <span>@Model.Rows[i].TeacherRemarks</span> }</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div></div>
+        @if (Model.CanEdit)
+        {
+            <button class="btn btn-primary">Save Draft Marks</button>
+            <span class="text-muted small ms-2">Save draft before submitting for verification.</span>
+        }
+    </form>
+}
+
+<div class="card shadow-sm mt-4"><div class="card-body">
+    <h5>Marks Workflow</h5>
+    <div class="d-flex flex-wrap gap-2 align-items-end">
+        @if (Model.CanSubmit)
+        {
+            <form asp-action="SubmitMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-outline-primary">Submit for Verification</button></form>
+        }
+        @if (Model.CanVerify)
+        {
+            <form asp-action="VerifyMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-success">Verify Marks</button></form>
+        }
+        @if (Model.CanLock)
+        {
+            <form asp-action="LockMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-warning">Lock Marks Sheet</button></form>
+        }
+        @if (Model.CanReopen)
+        {
+            <form asp-action="ReopenMarks" method="post" class="d-flex gap-2">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><input name="reason" class="form-control" required maxlength="500" placeholder="Reason to reopen" /><button class="btn btn-outline-danger">Reopen</button></form>
+        }
+        @if (!Model.CanSubmit && !Model.CanVerify && !Model.CanLock && !Model.CanReopen)
+        {
+            <span class="text-muted">No workflow action is available for this sheet in its current state.</span>
+        }
+    </div>
+</div></div>
+
+@section Scripts {
+<script>
+(function () {
+    function updateRow(select) {
+        var row = select.getAttribute('data-row');
+        var disabled = select.value !== '0';
+        document.querySelectorAll('.mark-theory-' + row + ', .mark-practical-' + row).forEach(function (input) {
+            input.disabled = disabled;
+            if (disabled) input.value = '';
+        });
+    }
+    document.querySelectorAll('.mark-status').forEach(function (select) {
+        updateRow(select);
+        select.addEventListener('change', function () { updateRow(select); });
+    });
+})();
+</script>
+}

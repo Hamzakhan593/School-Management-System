@@ -1,0 +1,37 @@
+@model School_Management_System.ViewModels.FinancialSummaryViewModel
+@{
+    ViewData["Title"] = "Financial Summary";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div><h2 class="mb-1">Simple Financial Summary</h2><div class="text-muted">Fee income + other recorded income versus posted payroll + approved operating expenses. This is not a full double-entry general ledger.</div></div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to Expenses</a>
+</div>
+<form method="get" class="card card-body shadow-sm mb-4"><div class="row g-2 align-items-end"><div class="col-sm-3"><label class="form-label">Year</label><input name="year" value="@Model.Year" type="number" class="form-control" /></div><div class="col-sm-3"><label class="form-label">Month</label><select name="month" class="form-select">@for (var i = 1; i <= 12; i++)
+            {
+                if (i == Model.Month)
+                {
+                    <option value="@i" selected>@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)</option>
+                }
+                else
+                {
+                    <option value="@i">@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(i)</option>
+                }
+            }</select></div><div class="col-sm-3"><button class="btn btn-primary" type="submit">View</button></div></div></form>
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Fee Income</div><div class="fs-4 fw-semibold">Rs. @Model.FeeIncome.ToString("N2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Other Income</div><div class="fs-4 fw-semibold">Rs. @Model.OtherIncome.ToString("N2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Payroll</div><div class="fs-4 fw-semibold">Rs. @Model.PayrollCost.ToString("N2")</div></div></div></div>
+    <div class="col-md-3"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted small">Operating Expenses</div><div class="fs-4 fw-semibold">Rs. @Model.OperatingExpenses.ToString("N2")</div></div></div></div>
+</div>
+<div class="alert @(Model.NetBalance >= 0 ? "alert-success" : "alert-warning")">Selected month net: <strong>Rs. @Model.NetBalance.ToString("N2")</strong> &nbsp; (Total Income Rs. @Model.TotalIncome.ToString("N2") − Total Outflow Rs. @Model.TotalOutflow.ToString("N2"))</div>
+<div class="row g-4">
+    <div class="col-xl-8">
+        <div class="card shadow-sm"><div class="card-header fw-semibold">Combined Ledger View</div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead class="table-light"><tr><th>Date</th><th>Type</th><th>Reference</th><th>Description</th><th class="text-end">Inflow</th><th class="text-end">Outflow</th></tr></thead><tbody>
+        @foreach(var row in Model.LedgerRows){<tr><td>@row.Date.ToString("dd MMM yyyy")</td><td>@row.Type</td><td>@row.Reference</td><td>@row.Description</td><td class="text-end">@(row.Inflow > 0 ? "Rs. " + row.Inflow.ToString("N2") : "—")</td><td class="text-end">@(row.Outflow > 0 ? "Rs. " + row.Outflow.ToString("N2") : "—")</td></tr>}
+        @if(Model.LedgerRows.Count==0){<tr><td colspan="6" class="text-center text-muted py-4">No posted financial activity for this month.</td></tr>}
+        </tbody></table></div></div>
+    </div>
+    <div class="col-xl-4">
+        <div class="card shadow-sm"><div class="card-header fw-semibold">Year @Model.Year</div><div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Month</th><th class="text-end">Net</th></tr></thead><tbody>@foreach(var row in Model.YearRows){<tr class="@(row.Month==Model.Month ? "table-primary" : "")"><td>@System.Globalization.CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(row.Month)</td><td class="text-end">Rs. @row.Net.ToString("N2")</td></tr>}</tbody></table></div></div>
+    </div>
+</div>

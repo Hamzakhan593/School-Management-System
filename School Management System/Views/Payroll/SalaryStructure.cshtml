@@ -1,0 +1,62 @@
+@model School_Management_System.ViewModels.SalaryStructureViewModel
+@using School_Management_System.Models
+@{
+    ViewData["Title"] = "Salary Structure";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <div><h1 class="h3 mb-1">Salary Structure</h1><p class="text-muted mb-0"><strong>@Model.StaffName</strong> · @Model.EmployeeId · @Model.Designation · @(Model.Department ?? "No department")</p></div>
+    <div class="d-flex gap-2"><a class="btn btn-outline-primary" asp-action="StaffHistory" asp-route-staffId="@Model.StaffId">Salary History</a><a class="btn btn-outline-secondary" asp-controller="Staff" asp-action="Details" asp-route-id="@Model.StaffId">Back to Staff</a></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-xl-8"><div class="card shadow-sm"><div class="card-header fw-semibold">Monthly Salary Rules</div><div class="card-body">
+        <form method="post" asp-action="SalaryStructure">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="StaffId" />
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div class="row g-3">
+                <div class="col-md-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="EffectiveFrom" class="form-label"></label><input asp-for="EffectiveFrom" class="form-control" type="date" /></div>
+                <div class="col-md-4"><label asp-for="BasicSalary" class="form-label"></label><input asp-for="BasicSalary" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="HouseAllowance" class="form-label"></label><input asp-for="HouseAllowance" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="MedicalAllowance" class="form-label"></label><input asp-for="MedicalAllowance" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="TransportAllowance" class="form-label"></label><input asp-for="TransportAllowance" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="OtherAllowance" class="form-label"></label><input asp-for="OtherAllowance" class="form-control" /></div>
+                <div class="col-md-4"><label asp-for="FixedDeduction" class="form-label"></label><input asp-for="FixedDeduction" class="form-control" /></div>
+            </div>
+            <hr />
+            <h6>Attendance deductions</h6><p class="small text-muted">Set a rate to 0 when that attendance status should not reduce salary.</p>
+            <div class="row g-3">
+                <div class="col-md-3"><label asp-for="AbsenceDeductionPerDay" class="form-label"></label><input asp-for="AbsenceDeductionPerDay" class="form-control" /></div>
+                <div class="col-md-3"><label asp-for="HalfDayDeductionPerDay" class="form-label"></label><input asp-for="HalfDayDeductionPerDay" class="form-control" /></div>
+                <div class="col-md-3"><label asp-for="LateDeductionPerOccurrence" class="form-label"></label><input asp-for="LateDeductionPerOccurrence" class="form-control" /></div>
+                <div class="col-md-3"><label asp-for="LeaveDeductionPerDay" class="form-label"></label><input asp-for="LeaveDeductionPerDay" class="form-control" /></div>
+            </div>
+            <div class="form-check mt-3"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label">Salary structure active</label></div>
+            <div class="mt-4"><button class="btn btn-primary" type="submit">Save Salary Structure</button></div>
+        </form>
+    </div></div></div>
+
+    <div class="col-xl-4"><div class="card shadow-sm mb-4"><div class="card-header fw-semibold">Add Advance / Loan</div><div class="card-body">
+        <form method="post" asp-action="AddAdvance">
+            @Html.AntiForgeryToken()<input type="hidden" name="StaffId" value="@Model.StaffId" />
+            <div class="mb-3"><label class="form-label">Type</label><select class="form-select" name="Type" asp-items="Html.GetEnumSelectList<StaffAdvanceType>()"></select></div>
+            <div class="mb-3"><label class="form-label">Description</label><input class="form-control" name="Description" maxlength="200" required /></div>
+            <div class="row g-2"><div class="col-6"><label class="form-label">Amount</label><input class="form-control" name="OriginalAmount" type="number" min="0.01" step="0.01" required /></div><div class="col-6"><label class="form-label">Monthly Installment</label><input class="form-control" name="MonthlyInstallment" type="number" min="0.01" step="0.01" required /></div></div>
+            <div class="mt-3"><label class="form-label">Start Date</label><input class="form-control" name="StartDate" type="date" value="@DateTime.Today.ToString("yyyy-MM-dd")" /></div>
+            <div class="mt-3"><label class="form-label">Notes</label><textarea class="form-control" name="Notes" rows="2" maxlength="500"></textarea></div>
+            <button class="btn btn-outline-primary mt-3" type="submit">Add Advance / Loan</button>
+        </form>
+    </div></div>
+    <div class="card shadow-sm"><div class="card-header fw-semibold">Advances / Loans</div><div class="list-group list-group-flush">
+        @if(Model.Advances.Count==0){<div class="list-group-item text-muted">No advances or loans.</div>}
+        else
+        {
+            @foreach(var a in Model.Advances)
+            {
+                <div class="list-group-item"><div class="d-flex justify-content-between gap-2"><div><strong>@a.Type · @a.Description</strong><div class="small text-muted">Original: PKR @a.OriginalAmount.ToString("N2") · Balance: PKR @a.OutstandingBalance.ToString("N2") · Installment: PKR @a.MonthlyInstallment.ToString("N2")</div></div><span class="badge text-bg-@(a.Status==StaffAdvanceStatus.Active?"warning":"secondary") align-self-start">@a.Status</span></div>@if(a.Status==StaffAdvanceStatus.Active){<form method="post" asp-action="CancelAdvance" class="mt-2">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@a.Id"/><input type="hidden" name="staffId" value="@Model.StaffId"/><button class="btn btn-sm btn-outline-danger">Cancel</button></form>}</div>
+            }
+        }
+    </div></div></div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
