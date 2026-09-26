@@ -39,22 +39,22 @@ public class FeeService : IFeeService
             .Select(x => x.Enrollment.SchoolClassId!.Value).Distinct().ToList();
         var context = await LoadCalculationContextAsync(schoolId, request.AcademicSessionId, studentIds, classIds, cancellationToken);
 
-        var existingStudentIds = await _db.FeeChallans.AsNoTracking()
+        var existingRows = await _db.FeeChallans.AsNoTracking()
             .Where(x => x.SchoolId == schoolId
                         && x.AcademicSessionId == request.AcademicSessionId
                         && x.BillingPeriod == billingPeriod
                         && !x.IsSuperseded
                         && x.Status != FeeChallanStatus.Cancelled
                         && studentIds.Contains(x.StudentId))
-            .Select(x => x.StudentId)
+            .Select(x => new { x.StudentId, x.CurrentChargesTotal })
             .Distinct()
             .ToListAsync(cancellationToken);
-        var existing = existingStudentIds.ToHashSet();
+        var existing = existingRows.GroupBy(x => x.StudentId).ToDictionary(g => g.Key, g => g.First().CurrentChargesTotal);
 
         var oldChallans = await _db.FeeChallans.AsNoTracking()
             .Where(x => x.SchoolId == schoolId
                         && studentIds.Contains(x.StudentId)
-                        && x.BillingPeriod != billingPeriod
+                        && x.BillingPeriodStart < periodStart
                         && !x.IsSuperseded
                         && x.Status != FeeChallanStatus.Cancelled
                         && x.Status != FeeChallanStatus.Waived
@@ -82,8 +82,9 @@ public class FeeService : IFeeService
                 PreviousOutstanding = priorOutstanding.GetValueOrDefault(entry.Student.Id)
             };
 
-            if (existing.Contains(entry.Student.Id))
+            if (existing.TryGetValue(entry.Student.Id, out var existingCharges))
             {
+                row.CurrentCharges = existingCharges;
                 row.Result = "Existing challan — skipped";
                 result.WillSkipExisting++;
             }
@@ -157,7 +158,7 @@ public class FeeService : IFeeService
         var previousRows = await _db.FeeChallans
             .Where(x => x.SchoolId == schoolId
                         && studentIds.Contains(x.StudentId)
-                        && x.BillingPeriod != billingPeriod
+                        && x.BillingPeriodStart < periodStart
                         && !x.IsSuperseded
                         && x.Status != FeeChallanStatus.Cancelled
                         && x.Status != FeeChallanStatus.Waived

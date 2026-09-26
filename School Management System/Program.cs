@@ -75,6 +75,9 @@ builder.Services.AddScoped<ICameraRecognitionProvider, ManualOnlyCameraRecogniti
 builder.Services.Configure<FeeOptions>(builder.Configuration.GetSection("Fees"));
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IFeePdfService, FeePdfService>();
+builder.Services.AddScoped<ChallanPrintService>();
+builder.Services.AddScoped<ReferenceChallanPdf>();
+builder.Services.Configure<ChallanTemplateOptions>(builder.Configuration.GetSection("ChallanTemplate"));
 builder.Services.AddScoped<IExamService, ExamService>();
 builder.Services.AddScoped<IResultService, ResultService>();
 builder.Services.AddScoped<IResultPdfService, ResultPdfService>();

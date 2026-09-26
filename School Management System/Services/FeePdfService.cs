@@ -6,59 +6,15 @@ namespace School_Management_System.Services;
 
 public class FeePdfService : IFeePdfService
 {
-    public byte[] CreateChallanPdf(School school, FeeChallan challan, decimal currentStudentOutstanding)
-        => SimplePdfWriter.Create(new[] { BuildChallanPage(school, challan, currentStudentOutstanding) });
-
-    public byte[] CreateChallanBatchPdf(
-        School school,
-        IReadOnlyList<(FeeChallan Challan, decimal CurrentStudentOutstanding)> challans)
-        => SimplePdfWriter.Create(challans.Select(x => BuildChallanPage(school, x.Challan, x.CurrentStudentOutstanding)).ToList());
+    private readonly ReferenceChallanPdf _challans;
+    public FeePdfService(ReferenceChallanPdf challans) => _challans = challans;
+    public byte[] CreateChallanPdf(School school, ChallanPrintModel challan)
+        => _challans.Create(school, new[] { challan });
+    public byte[] CreateChallanBatchPdf(School school, IReadOnlyList<ChallanPrintModel> challans)
+        => _challans.Create(school, challans);
 
     public byte[] CreateReceiptPdf(School school, FeePayment payment, decimal currentStudentOutstanding)
         => SimplePdfWriter.Create(new[] { BuildReceiptPage(school, payment, currentStudentOutstanding) });
-
-    private static IReadOnlyList<string> BuildChallanPage(School school, FeeChallan challan, decimal currentStudentOutstanding)
-    {
-        var lines = new List<string>
-        {
-            school.Name,
-            "FEE CHALLAN",
-            $"Challan No: {challan.ChallanNumber}",
-            $"Billing Period: {challan.BillingPeriod}    Issue: {challan.IssueDate:dd MMM yyyy}    Due: {challan.DueDate:dd MMM yyyy}",
-            $"Student: {challan.Student.FullName}    Admission No: {challan.Student.AdmissionNumber}",
-            $"Class: {challan.ClassNameSnapshot ?? "-"}    Section: {challan.SectionNameSnapshot ?? "-"}",
-            "",
-            "Fee Item                                      Amount       Discount       Net",
-            "--------------------------------------------------------------------------"
-        };
-
-        foreach (var item in challan.Items.OrderBy(x => x.Id))
-        {
-            lines.Add($"{Fit(item.Description, 42),-42} {Money(item.Amount),10} {Money(item.DiscountAmount),12} {Money(item.NetAmount),10}");
-        }
-
-        lines.Add("--------------------------------------------------------------------------");
-        lines.Add($"Subtotal: {Money(challan.Subtotal)}");
-        lines.Add($"Discount: {Money(challan.DiscountTotal)}");
-        if (challan.LateFeeAmount > 0)
-            lines.Add($"Late Fee Included: {Money(challan.LateFeeAmount)}");
-        lines.Add($"Current Charges: {Money(challan.CurrentChargesTotal)}");
-        lines.Add($"Previous Outstanding at Issue: {Money(challan.PreviousOutstandingAtIssue)}");
-        lines.Add($"Total Due at Issue: {Money(challan.TotalDueAtIssue)}");
-        lines.Add($"Paid Against This Challan: {Money(challan.PaidAmount)}");
-        lines.Add($"Current Student Outstanding: {Money(currentStudentOutstanding)}");
-        lines.Add($"Status: {challan.Status}");
-        lines.Add("");
-
-        if (!string.IsNullOrWhiteSpace(school.ChallanFooterText))
-            lines.AddRange(Wrap(school.ChallanFooterText!, 88));
-        else
-            lines.Add("Please pay by the due date and keep the receipt for your record.");
-
-        lines.Add("");
-        lines.Add("Note: previous outstanding shown above is the snapshot at challan issue time; use the student ledger for the latest balance.");
-        return lines;
-    }
 
     private static IReadOnlyList<string> BuildReceiptPage(School school, FeePayment payment, decimal currentStudentOutstanding)
     {

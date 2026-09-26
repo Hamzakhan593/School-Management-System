@@ -21,6 +21,7 @@ public class FeesController : Controller
     private readonly IFeePdfService _pdf;
     private readonly IAuditService _audit;
     private readonly FeeOptions _options;
+    private readonly ChallanPrintService _challanPrint;
 
     public FeesController(
         ApplicationDbContext db,
@@ -28,7 +29,7 @@ public class FeesController : Controller
         IFeeService feeService,
         IFeePdfService pdf,
         IAuditService audit,
-        IOptions<FeeOptions> options)
+        IOptions<FeeOptions> options, ChallanPrintService challanPrint)
     {
         _db = db;
         _schoolContext = schoolContext;
@@ -36,6 +37,7 @@ public class FeesController : Controller
         _pdf = pdf;
         _audit = audit;
         _options = options.Value;
+        _challanPrint = challanPrint;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -363,7 +365,7 @@ public class FeesController : Controller
     }
 
     [HttpPost, ValidateAntiForgeryToken]
-    public async Task<IActionResult> Commit(ChallanGenerationViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> Commit(ChallanGenerationViewModel model, CancellationToken cancellationToken, bool download = false)
     {
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
@@ -378,6 +380,17 @@ public class FeesController : Controller
         {
             var batch = await _feeService.GenerateAsync(context.Value.SchoolId, context.Value.UserId, model, cancellationToken);
             await _audit.WriteAsync("FeeChallanBatch.Generate", nameof(FeeChallanBatch), batch.Id.ToString(), $"Period={batch.BillingPeriod}; Scope={batch.Scope}; Generated={batch.GeneratedCount}; Skipped={batch.SkippedCount}; Total={batch.TotalAmount}");
+            if (download)
+            {
+                var eligible = await _feeService.PreviewGenerationAsync(context.Value.SchoolId, model, cancellationToken);
+                var studentIds = eligible.Rows.Select(x => x.StudentId).ToList();
+                var printable = await _db.FeeChallans.AsNoTracking().Include(x => x.Student).Include(x => x.Items)
+                    .Where(x => x.SchoolId == context.Value.SchoolId && x.AcademicSessionId == model.AcademicSessionId
+                        && x.BillingPeriod == batch.BillingPeriod && studentIds.Contains(x.StudentId)
+                        && !x.IsSuperseded && x.Status != FeeChallanStatus.Cancelled && x.Status != FeeChallanStatus.Waived)
+                    .OrderBy(x => x.ClassNameSnapshot).ThenBy(x => x.SectionNameSnapshot).ThenBy(x => x.Student.FullName).ToListAsync(cancellationToken);
+                return await PrintAsync(context.Value.SchoolId, printable, $"Challans-{batch.BillingPeriod}.pdf", cancellationToken);
+            }
             TempData["Success"] = $"Batch completed: {batch.GeneratedCount} challan(s) generated, {batch.SkippedCount} skipped.";
             return RedirectToAction(nameof(Challans), new { billingPeriod = batch.BillingPeriod, batchId = batch.Id });
         }
@@ -451,25 +464,63 @@ public class FeesController : Controller
         var challan = await _db.FeeChallans.AsNoTracking().Include(x => x.Student).Include(x => x.Items)
             .FirstOrDefaultAsync(x => x.Id == id && x.SchoolId == context.Value.SchoolId, cancellationToken);
         if (challan is null) return NotFound();
-        var outstanding = await _feeService.GetStudentOutstandingAsync(context.Value.SchoolId, challan.StudentId, cancellationToken);
-        return File(_pdf.CreateChallanPdf(school, challan, outstanding), "application/pdf", $"{challan.ChallanNumber}.pdf");
+        if (challan.IsSuperseded || challan.Status is FeeChallanStatus.Cancelled or FeeChallanStatus.Waived)
+        {
+            TempData["Error"] = "Cancelled, waived or replaced challans cannot be printed for payment.";
+            return RedirectToAction(nameof(ChallanDetails), new { id });
+        }
+        return await PrintAsync(context.Value.SchoolId, new[] { challan }, $"{challan.ChallanNumber}.pdf", cancellationToken);
     }
 
     public async Task<IActionResult> BatchPdf(int id, CancellationToken cancellationToken)
     {
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
-        var school = await _db.Schools.AsNoTracking().FirstAsync(x => x.Id == context.Value.SchoolId, cancellationToken);
         var batch = await _db.FeeChallanBatches.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id && x.SchoolId == context.Value.SchoolId, cancellationToken);
         if (batch is null) return NotFound();
         var challans = await _db.FeeChallans.AsNoTracking().Include(x => x.Student).Include(x => x.Items)
-            .Where(x => x.FeeChallanBatchId == id && x.SchoolId == context.Value.SchoolId && !x.IsSuperseded)
-            .OrderBy(x => x.ClassNameSnapshot).ThenBy(x => x.SectionNameSnapshot).ThenBy(x => x.Student.FullName)
-            .ToListAsync(cancellationToken);
-        var result = new List<(FeeChallan Challan, decimal CurrentStudentOutstanding)>();
-        foreach (var challan in challans)
-            result.Add((challan, await _feeService.GetStudentOutstandingAsync(context.Value.SchoolId, challan.StudentId, cancellationToken)));
-        return File(_pdf.CreateChallanBatchPdf(school, result), "application/pdf", $"Challans-{batch.BillingPeriod}-Batch-{batch.Id}.pdf");
+            .Where(x => x.FeeChallanBatchId == id && x.SchoolId == context.Value.SchoolId && !x.IsSuperseded
+                && x.Status != FeeChallanStatus.Cancelled && x.Status != FeeChallanStatus.Waived)
+            .OrderBy(x => x.ClassNameSnapshot).ThenBy(x => x.SectionNameSnapshot).ThenBy(x => x.Student.FullName).ToListAsync(cancellationToken);
+        return await PrintAsync(context.Value.SchoolId, challans, $"Challans-{batch.BillingPeriod}-Batch-{batch.Id}.pdf", cancellationToken);
+    }
+
+    public async Task<IActionResult> ExportPdf(string? billingPeriod, int? schoolClassId, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return RedirectToSchoolSetup();
+        billingPeriod = string.IsNullOrWhiteSpace(billingPeriod) ? DateTime.Today.ToString("yyyy-MM") : billingPeriod;
+        if (!DateTime.TryParseExact(billingPeriod, "yyyy-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return BadRequest("Select a valid billing month.");
+        var query = _db.FeeChallans.AsNoTracking().Include(x => x.Student).Include(x => x.Items)
+            .Where(x => x.SchoolId == context.Value.SchoolId && x.BillingPeriod == billingPeriod && !x.IsSuperseded
+                && x.Status != FeeChallanStatus.Cancelled && x.Status != FeeChallanStatus.Waived);
+        if (schoolClassId.HasValue)
+        {
+            var students = _db.StudentEnrollments.Where(x => x.SchoolId == context.Value.SchoolId && x.IsCurrent && x.SchoolClassId == schoolClassId).Select(x => x.StudentId);
+            query = query.Where(x => students.Contains(x.StudentId));
+        }
+        var rows = await query.OrderBy(x => x.ClassNameSnapshot).ThenBy(x => x.SectionNameSnapshot).ThenBy(x => x.Student.FullName).ToListAsync(cancellationToken);
+        return await PrintAsync(context.Value.SchoolId, rows, $"Challans-{billingPeriod}.pdf", cancellationToken);
+    }
+
+    private async Task<IActionResult> PrintAsync(int schoolId, IReadOnlyList<FeeChallan> challans, string filename, CancellationToken ct)
+    {
+        if (challans.Count == 0)
+        {
+            TempData["Error"] = "No printable challans found. Generate the selected month's fees first.";
+            return RedirectToAction(nameof(Generate));
+        }
+        // Reuse the existing policy, then reload so newly applied fees and partial payments appear in the PDF.
+        await _feeService.RefreshStatusesAndLateFeesAsync(schoolId, ct);
+        var ids = challans.Select(x => x.Id).ToList();
+        var fresh = await _db.FeeChallans.AsNoTracking().Include(x => x.Student).Include(x => x.Items)
+            .Where(x => x.SchoolId == schoolId && ids.Contains(x.Id) && !x.IsSuperseded
+                && x.Status != FeeChallanStatus.Cancelled && x.Status != FeeChallanStatus.Waived)
+            .OrderBy(x => x.ClassNameSnapshot).ThenBy(x => x.SectionNameSnapshot).ThenBy(x => x.Student.FullName).ToListAsync(ct);
+        if (fresh.Count == 0) return RedirectToAction(nameof(Generate));
+        var school = await _db.Schools.AsNoTracking().FirstAsync(x => x.Id == schoolId, ct);
+        var models = await _challanPrint.BuildAsync(schoolId, fresh, ct);
+        return File(_pdf.CreateChallanBatchPdf(school, models), "application/pdf", filename);
     }
 
     [HttpPost, ValidateAntiForgeryToken]
