@@ -1,0 +1,25 @@
+.challan-workspace { max-width: 1180px; margin-inline: auto; }
+.challan-workspace [hidden] { display: none !important; }
+.challan-automation { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1rem 1.25rem; background: #f1f5f9; border: 1px solid #dbe3ed; border-radius: 12px; }
+.challan-automation .btn { flex-shrink: 0; }
+.challan-legend { display: flex; align-items: center; flex-wrap: wrap; gap: .65rem; font-size: 1.15rem; font-weight: 650; margin-bottom: 1.1rem; }
+.challan-step { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #e8efff; color: #2448a0; font-size: .95rem; }
+.challan-choices { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
+.challan-choice { display: flex; align-items: flex-start; gap: .6rem; border: 2px solid #dfe5ed; border-radius: 12px; padding: 1rem; cursor: pointer; }
+.challan-choice:has(input:checked) { border-color: #315cbd; background: #f0f5ff; }
+.challan-choice:focus-within { outline: 3px solid #a8c2ff; outline-offset: 2px; }
+.challan-choice input { margin-top: .25rem; flex-shrink: 0; accent-color: #315cbd; }
+.challan-choice small { display: block; margin-top: .4rem; color: #536174; line-height: 1.5; }
+.challan-note { background: #f8fafc; border-radius: 8px; padding: .9rem 1rem; color: #536174; font-size: .9rem; }
+.challan-student-list { max-height: 270px; overflow-y: auto; border: 1px solid #dfe5ed; border-radius: 8px; }
+.challan-student { display: flex; gap: .75rem; padding: .8rem 1rem; border-bottom: 1px solid #edf0f5; cursor: pointer; }
+.challan-student:has(input:checked) { background: #f0f5ff; }
+.challan-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border: 1px solid #dfe5ed; border-radius: 12px; }
+.challan-summary > div { padding: 1rem; }
+.challan-summary strong { display: block; font-size: 1.4rem; }
+.challan-summary span { color: #536174; font-size: .85rem; }
+.challan-preview-table { max-height: 450px; }
+.challan-preview-table thead { position: sticky; top: 0; background: #f8fafc; }
+#challanPreview { scroll-margin-top: 90px; }
+@media (max-width: 900px) { .challan-choices, .challan-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .challan-choices { grid-template-columns: 1fr; } .challan-automation { align-items: flex-start; flex-direction: column; } .challan-workspace .card-body { padding: 1rem !important; } }

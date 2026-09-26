@@ -90,6 +90,10 @@ public class StudentDiscountsViewModel
 
 public class ChallanGenerationViewModel
 {
+    public Dictionary<int, int> SectionClasses { get; set; } = new();
+    public bool AutoGenerateEnabled { get; set; }
+    public int GenerationDay { get; set; }
+    public int DueDay { get; set; }
     [Required] public int AcademicSessionId { get; set; }
     [DataType("month")] public DateTime BillingMonth { get; set; } = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     public FeeBatchScope Scope { get; set; } = FeeBatchScope.WholeSchool;
@@ -108,6 +112,7 @@ public class ChallanGenerationViewModel
 
 public class FeeGenerationPreviewViewModel
 {
+    public int ExistingPrintable { get; set; }
     public int EligibleStudents { get; set; }
     public int WillGenerate { get; set; }
     public int WillSkipExisting { get; set; }

@@ -46,10 +46,10 @@ public class FeeService : IFeeService
                         && !x.IsSuperseded
                         && x.Status != FeeChallanStatus.Cancelled
                         && studentIds.Contains(x.StudentId))
-            .Select(x => new { x.StudentId, x.CurrentChargesTotal })
+            .Select(x => new { x.StudentId, x.CurrentChargesTotal, x.Status })
             .Distinct()
             .ToListAsync(cancellationToken);
-        var existing = existingRows.GroupBy(x => x.StudentId).ToDictionary(g => g.Key, g => g.First().CurrentChargesTotal);
+        var existing = existingRows.GroupBy(x => x.StudentId).ToDictionary(g => g.Key, g => g.First());
 
         var oldChallans = await _db.FeeChallans.AsNoTracking()
             .Where(x => x.SchoolId == schoolId
@@ -84,8 +84,10 @@ public class FeeService : IFeeService
 
             if (existing.TryGetValue(entry.Student.Id, out var existingCharges))
             {
-                row.CurrentCharges = existingCharges;
-                row.Result = "Existing challan — skipped";
+                row.CurrentCharges = existingCharges.CurrentChargesTotal;
+                row.Result = existingCharges.Status == FeeChallanStatus.Waived
+                    ? "Fee waived — no PDF" : "Already saved — included in PDF";
+                if (existingCharges.Status != FeeChallanStatus.Waived) result.ExistingPrintable++;
                 result.WillSkipExisting++;
             }
             else
@@ -94,12 +96,12 @@ public class FeeService : IFeeService
                 row.CurrentCharges = lines.Sum(x => x.NetAmount);
                 if (lines.Count == 0 || row.CurrentCharges <= 0)
                 {
-                    row.Result = "No applicable fee structure";
+                    row.Result = "No payable fee set — check fee setup";
                     result.WillSkipNoStructure++;
                 }
                 else
                 {
-                    row.Result = "Ready";
+                    row.Result = "New challan — ready to save";
                     result.WillGenerate++;
                     result.EstimatedCurrentCharges += row.CurrentCharges;
                 }

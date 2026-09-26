@@ -22,6 +22,7 @@ public class FeesController : Controller
     private readonly IAuditService _audit;
     private readonly FeeOptions _options;
     private readonly ChallanPrintService _challanPrint;
+    private readonly ISystemSettingsService _settings;
 
     public FeesController(
         ApplicationDbContext db,
@@ -29,7 +30,7 @@ public class FeesController : Controller
         IFeeService feeService,
         IFeePdfService pdf,
         IAuditService audit,
-        IOptions<FeeOptions> options, ChallanPrintService challanPrint)
+        IOptions<FeeOptions> options, ChallanPrintService challanPrint, ISystemSettingsService settings)
     {
         _db = db;
         _schoolContext = schoolContext;
@@ -38,6 +39,7 @@ public class FeesController : Controller
         _audit = audit;
         _options = options.Value;
         _challanPrint = challanPrint;
+        _settings = settings;
     }
 
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -350,11 +352,11 @@ public class FeesController : Controller
     {
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
-        ValidateGenerationRequest(model);
+        await ValidateGenerationRequestAsync(context.Value.SchoolId, model, cancellationToken);
         if (!ModelState.IsValid)
         {
-            TempData["Error"] = string.Join(" ", ModelState.Values.SelectMany(x => x.Errors).Select(x => x.ErrorMessage));
-            return RedirectToAction(nameof(Generate));
+            await PopulateGenerationLookupsAsync(context.Value.SchoolId, model, cancellationToken);
+            return View("Generate", model);
         }
 
         model.Preview = await _feeService.PreviewGenerationAsync(context.Value.SchoolId, model, cancellationToken);
@@ -369,10 +371,11 @@ public class FeesController : Controller
     {
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
-        ValidateGenerationRequest(model);
+        await ValidateGenerationRequestAsync(context.Value.SchoolId, model, cancellationToken);
         if (!ModelState.IsValid || string.IsNullOrWhiteSpace(model.PreviewToken))
         {
-            TempData["Error"] = "Preview the batch again before committing.";
+            if (download) return BadRequest(new { message = "Please check your selection and preview the challans again." });
+            TempData["Error"] = "Check your selection and preview the challans again before saving.";
             return RedirectToAction(nameof(Generate));
         }
 
@@ -396,6 +399,7 @@ public class FeesController : Controller
         }
         catch (Exception ex)
         {
+            if (download) return BadRequest(new { message = ex is InvalidOperationException ? ex.Message : "The PDF could not be prepared. Please try again; saved challans will not be charged twice." });
             TempData["Error"] = ex.Message;
             return RedirectToAction(nameof(Generate));
         }
@@ -834,14 +838,40 @@ public class FeesController : Controller
 
     private async Task PopulateGenerationLookupsAsync(int schoolId, ChallanGenerationViewModel model, CancellationToken ct)
     {
+        var settings = await _settings.GetAsync(schoolId, ct);
+        model.AutoGenerateEnabled = settings.AutoGenerateMonthlyChallans;
+        model.GenerationDay = settings.MonthlyChallanGenerationDay;
+        model.DueDay = settings.DefaultFeeDueDay;
+        model.SectionClasses = await _db.Sections.AsNoTracking().Where(x => x.SchoolId == schoolId && x.IsActive).ToDictionaryAsync(x => x.Id, x => x.SchoolClassId, ct);
         model.Sessions = await _db.AcademicSessions.AsNoTracking().Where(x => x.SchoolId == schoolId).OrderByDescending(x => x.StartDate).Select(x => new LookupOption { Id = x.Id, Text = x.Name }).ToListAsync(ct);
         model.Classes = await GetClassOptionsAsync(schoolId, ct);
         model.Sections = await _db.Sections.AsNoTracking().Where(x => x.SchoolId == schoolId && x.IsActive).OrderBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.Name).Select(x => new LookupOption { Id = x.Id, Text = x.SchoolClass.Name + " / " + x.Name }).ToListAsync(ct);
         model.Students = await GetStudentOptionsAsync(schoolId, ct);
     }
 
-    private void ValidateGenerationRequest(ChallanGenerationViewModel model)
+    private async Task ValidateGenerationRequestAsync(int schoolId, ChallanGenerationViewModel model, CancellationToken ct)
     {
+        if (!Enum.IsDefined(model.Scope)) ModelState.AddModelError(nameof(model.Scope), "Choose who needs challans.");
+        var session = await _db.AcademicSessions.AsNoTracking().FirstOrDefaultAsync(x => x.Id == model.AcademicSessionId && x.SchoolId == schoolId, ct);
+        if (session is null) ModelState.AddModelError(nameof(model.AcademicSessionId), "Choose a school session.");
+        if (model.BillingMonth.Year < 1900 || model.BillingMonth.Year > 9998)
+            ModelState.AddModelError(nameof(model.BillingMonth), "Choose a valid fee month.");
+        else if (session is not null)
+        {
+            var month = new DateTime(model.BillingMonth.Year, model.BillingMonth.Month, 1);
+            if (month > session.EndDate.Date || month.AddMonths(1) <= session.StartDate.Date)
+                ModelState.AddModelError(nameof(model.BillingMonth), "Choose a fee month within the selected school session.");
+        }
+        if (model.Scope != FeeBatchScope.ClassSection) { model.SchoolClassId = null; model.SectionId = null; }
+        if (model.Scope != FeeBatchScope.Individual) model.StudentId = null;
+        if (model.Scope != FeeBatchScope.SelectedStudents) model.SelectedStudentIds.Clear();
+        if (model.SchoolClassId.HasValue && !await _db.SchoolClasses.AnyAsync(x => x.Id == model.SchoolClassId && x.SchoolId == schoolId && x.IsActive, ct))
+            ModelState.AddModelError(nameof(model.SchoolClassId), "Choose an active class in your school.");
+        if (model.SectionId.HasValue && !await _db.Sections.AnyAsync(x => x.Id == model.SectionId && x.SchoolId == schoolId && x.SchoolClassId == model.SchoolClassId && x.IsActive, ct))
+            ModelState.AddModelError(nameof(model.SectionId), "Choose a section belonging to the selected class.");
+        var selectedIds = model.Scope == FeeBatchScope.Individual && model.StudentId.HasValue ? new List<int> { model.StudentId.Value } : model.SelectedStudentIds.Distinct().ToList();
+        if (selectedIds.Count > 0 && await _db.StudentEnrollments.Where(x => x.SchoolId == schoolId && x.AcademicSessionId == model.AcademicSessionId && x.IsCurrent && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active && selectedIds.Contains(x.StudentId)).Select(x => x.StudentId).Distinct().CountAsync(ct) != selectedIds.Count)
+            ModelState.AddModelError(nameof(model.StudentId), "Choose students with an active enrollment in this school session.");
         if (model.AcademicSessionId <= 0) ModelState.AddModelError(nameof(model.AcademicSessionId), "Select an academic session.");
         if (model.Scope == FeeBatchScope.Individual && !model.StudentId.HasValue) ModelState.AddModelError(nameof(model.StudentId), "Select a student.");
         if (model.Scope == FeeBatchScope.ClassSection && !model.SchoolClassId.HasValue) ModelState.AddModelError(nameof(model.SchoolClassId), "Select a class.");
