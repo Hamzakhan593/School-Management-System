@@ -1,74 +1,30 @@
 @model School_Management_System.ViewModels.ExamIndexViewModel
 @{
-    ViewData["Title"] = "Examinations & Marks";
+    ViewData["Title"] = "Exams & results";
     var canManage = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.ExamController);
 }
-
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-4">
-    <div>
-        <h1 class="h3 mb-1">Examinations & Marks</h1>
-        <p class="text-muted mb-0">Configure exams, assign class subjects, enter marks, verify and lock marks.</p>
-    </div>
-    <div class="d-flex gap-2">
-        <form method="get" class="d-flex gap-2 align-items-center">
-            <label class="small text-muted">Session</label>
-            <select name="sessionId" class="form-select" onchange="this.form.submit()">
-                @foreach (var session in Model.Sessions)
-                {
-                    if (Model.SelectedSessionId == session.Id)
-                    {
-                        <option value="@session.Id" selected>@session.Name</option>
-                    }
-                    else
-                    {
-                        <option value="@session.Id">@session.Name</option>
-                    }
-                }
-            </select>
-        </form>
-        @if (canManage)
-        {
-            <a class="btn btn-primary" asp-action="Create" asp-route-sessionId="@Model.SelectedSessionId">Create Exam</a>
-        }
-    </div>
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="results-workspace">
+<header class="results-heading"><div><span class="results-eyebrow">EXAMS &amp; RESULTS</span><h1>Your examinations</h1><p>Choose an exam to set up classes, enter marks or prepare result cards.</p></div>@if(canManage){<a class="btn btn-primary" asp-action="Create" asp-route-sessionId="@Model.SelectedSessionId">Create an exam</a>}</header>
+<nav class="results-nav" aria-label="Exams and results"><a asp-action="Index" aria-current="page">Exams</a><a asp-action="Workspace">Enter marks</a><a asp-controller="Results" asp-action="Index" asp-route-sessionId="@Model.SelectedSessionId">Result cards</a></nav>
+<form method="get" class="results-panel results-filters"><div><label for="examSession">Academic session</label><select id="examSession" name="sessionId" class="form-select">@foreach(var session in Model.Sessions){<option value="@session.Id" selected="@(session.Id == Model.SelectedSessionId)">@session.Name</option>}</select></div><button class="btn btn-outline-primary">Show exams</button></form>
+@if(!Model.Sessions.Any()){<div class="results-empty">Create an academic session before adding exams.</div>}else if(!Model.Exams.Any()){<div class="results-empty">No exams in this session yet. Use Create an exam to get started.</div>}else{
+<div class="results-search"><label for="examSearch">Find an exam<input id="examSearch" class="form-control" type="search" placeholder="Search by exam name" /></label></div>
+<div class="exam-directory">
+@foreach(var exam in Model.Exams){
+    var status = exam.Status switch { ExamStatus.Draft => "Setup needed", ExamStatus.MarksEntryOpen => "Marks entry open", ExamStatus.MarksLocked => "Ready for results", ExamStatus.Published => "Results published", _ => "Archived" };
+<article class="results-panel exam-card" data-exam-name="@exam.Title">
+<div class="exam-card-heading"><div><h2>@exam.Title</h2><p>@exam.AcademicSession.Name · @exam.ExamType@(exam.Term is null ? "" : " · " + exam.Term.Name)</p></div><span class="result-status @(exam.Status == ExamStatus.Published ? "is-published" : "")">@status</span></div>
+<div class="exam-facts"><div><span>Starts</span><strong class="exam-date">@exam.StartDate.ToString("dd MMM yyyy")</strong></div><div><span>Ends</span><strong class="exam-date">@exam.EndDate.ToString("dd MMM yyyy")</strong></div><div><span>Classes</span><strong>@exam.ExamClasses.Count assigned</strong></div></div>
+@if(exam.ExamClasses.Any()){<details class="exam-class-list"><summary>View assigned classes</summary><div class="result-chips">@foreach(var item in exam.ExamClasses.OrderBy(x=>x.SchoolClass.SortOrder)){<span>@item.SchoolClass.Name</span>}</div></details>}else{<p class="results-note">Add classes and subjects in exam setup before entering marks.</p>}
+<div class="results-actions">
+@if(exam.Status == ExamStatus.MarksEntryOpen){<a class="btn btn-primary" asp-action="Workspace" asp-route-examId="@exam.Id">Enter / review marks</a>}
+@if(exam.Status == ExamStatus.MarksLocked || exam.Status == ExamStatus.Published || exam.Status == ExamStatus.Archived){<a class="btn btn-primary" asp-controller="Results" asp-action="Index" asp-route-sessionId="@exam.AcademicSessionId" asp-fragment="exam-@exam.Id">Open result cards</a>}
+<a class="btn @(exam.Status == ExamStatus.Draft ? "btn-primary" : "btn-outline-secondary")" asp-action="Details" asp-route-id="@exam.Id">@(exam.Status == ExamStatus.Draft ? "Set up exam" : "Exam details")</a>
+@if(!exam.IsActive){<span class="results-note">Inactive exam</span>}
+</div></article>
+}
+</div><p id="examSearchEmpty" class="results-empty" hidden>No matching exams.</p>
+}
 </div>
-
-@if (!Model.Sessions.Any())
-{
-    <div class="alert alert-warning">Create an academic session first.</div>
-}
-else if (!Model.Exams.Any())
-{
-    <div class="card shadow-sm"><div class="card-body text-muted">No exams found for this session.</div></div>
-}
-else
-{
-    <div class="card shadow-sm">
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light"><tr><th>Exam</th><th>Type / Term</th><th>Dates</th><th>Classes</th><th>Status</th><th></th></tr></thead>
-                <tbody>
-                @foreach (var exam in Model.Exams)
-                {
-                    var badge = exam.Status switch
-                    {
-                        ExamStatus.Draft => "bg-secondary",
-                        ExamStatus.MarksEntryOpen => "bg-primary",
-                        ExamStatus.MarksLocked => "bg-warning text-dark",
-                        ExamStatus.Published => "bg-success",
-                        _ => "bg-dark"
-                    };
-                    <tr>
-                        <td><strong>@exam.Title</strong><div class="small text-muted">@exam.AcademicSession.Name</div></td>
-                        <td>@exam.ExamType<div class="small text-muted">@(exam.Term?.Name ?? "No term")</div></td>
-                        <td>@exam.StartDate.ToString("dd MMM yyyy")<br /><span class="small text-muted">to @exam.EndDate.ToString("dd MMM yyyy")</span></td>
-                        <td>@(exam.ExamClasses.Any() ? string.Join(", ", exam.ExamClasses.OrderBy(x => x.SchoolClass.SortOrder).Select(x => x.SchoolClass.Name)) : "Not assigned")</td>
-                        <td><span class="badge @badge">@exam.Status</span>@if (!exam.IsActive) { <span class="badge bg-light text-dark border ms-1">Inactive</span> }</td>
-                        <td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@exam.Id">Open</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-    </div>
-}
+@section Scripts { <script src="~/js/results-workspace.js" asp-append-version="true"></script> }

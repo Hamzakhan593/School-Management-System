@@ -62,6 +62,24 @@ public class ExamsController : Controller
         return View(new ExamIndexViewModel { SelectedSessionId = selectedSessionId, Sessions = sessions, Exams = exams });
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Workspace(int? examId, int? classId, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return RedirectToSchoolSetup();
+        var subjects = _db.ExamSubjects.AsNoTracking().Include(x => x.Exam).ThenInclude(x => x.AcademicSession)
+            .Include(x => x.SchoolClass).Include(x => x.Subject)
+            .Where(x => x.SchoolId == context.Value.SchoolId && x.IsActive && x.Exam.IsActive && x.Exam.Status != ExamStatus.Draft);
+        if (!IsManager()) subjects = subjects.Where(x => _db.TeacherAssignments.Any(a => a.SchoolId == context.Value.SchoolId
+            && a.AcademicSessionId == x.Exam.AcademicSessionId && a.SchoolClassId == x.SchoolClassId
+            && a.SubjectId == x.SubjectId && a.TeacherUserId == context.Value.UserId && a.IsActive));
+        var available = await subjects.OrderByDescending(x => x.Exam.StartDate).ThenBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.Subject.Title).ToListAsync(cancellationToken);
+        var exams = available.Select(x => x.Exam).DistinctBy(x => x.Id).ToList();
+        examId ??= exams.FirstOrDefault(x => x.Status == ExamStatus.MarksEntryOpen)?.Id ?? exams.FirstOrDefault()?.Id;
+        var selected = available.Where(x => x.ExamId == examId).ToList();
+        return View(new MarksWorkspaceViewModel { ExamId = examId, ClassId = classId, Exams = exams, Subjects = selected });
+    }
+
     [Authorize(Roles = ManageRoles)]
     [HttpGet]
     public async Task<IActionResult> Create(int? sessionId, CancellationToken cancellationToken)
@@ -410,11 +428,27 @@ public class ExamsController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SaveMarks(MarksEntryViewModel model, CancellationToken cancellationToken)
+    public async Task<IActionResult> SaveMarks(MarksEntryViewModel model, CancellationToken cancellationToken, bool submit = false)
     {
         var context = await GetContextAsync();
         if (context is null) return RedirectToSchoolSetup();
-        var result = await _examService.SaveMarksAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), model, cancellationToken);
+        var result = ModelState.IsValid
+            ? await _examService.SaveMarksAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), model, cancellationToken)
+            : new ExamOperationResult(false, "Please enter valid numbers in the highlighted fields.");
+        if (!result.Success)
+        {
+            var redisplay = await _examService.BuildMarksEntryAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), model.ExamSubjectId, model.SectionId, cancellationToken);
+            if (redisplay is null) return Forbid();
+            var posted = model.Rows.GroupBy(x => x.StudentId).ToDictionary(x => x.Key, x => x.First());
+            // Restore inputs by student identity; never bind old row indexes to a changed roster.
+            foreach (var row in redisplay.Rows)
+                if (posted.TryGetValue(row.StudentId, out var input))
+                { row.TheoryMarks = input.TheoryMarks; row.PracticalMarks = input.PracticalMarks; row.SpecialStatus = input.SpecialStatus; row.TeacherRemarks = input.TeacherRemarks; }
+            ModelState.Clear();
+            ModelState.AddModelError("", result.Message);
+            return View("Marks", redisplay);
+        }
+        if (submit) result = await _examService.SubmitMarksAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), model.ExamMarksSheetId, cancellationToken);
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         if (result.Success)
             await _audit.WriteAsync("Exam.MarksDraftSaved", "ExamMarksSheet", model.ExamMarksSheetId.ToString(), $"Rows={model.Rows.Count}");
@@ -430,6 +464,51 @@ public class ExamsController : Controller
         var result = await _examService.SubmitMarksAsync(context.Value.SchoolId, context.Value.UserId, IsManager(), sheetId, cancellationToken);
         TempData[result.Success ? "Success" : "Error"] = result.Message;
         if (result.Success) await _audit.WriteAsync("Exam.MarksSubmitted", "ExamMarksSheet", sheetId.ToString());
+        return RedirectToAction(nameof(Marks), new { examSubjectId, sectionId });
+    }
+
+    [Authorize(Roles = ManageRoles)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ImportClassSubjects(int examId, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return RedirectToSchoolSetup();
+        var exam = await _db.Exams.Include(x => x.ExamClasses).Include(x => x.ExamSubjects)
+            .FirstOrDefaultAsync(x => x.Id == examId && x.SchoolId == context.Value.SchoolId, cancellationToken);
+        if (exam is null) return NotFound();
+        if (exam.Status != ExamStatus.Draft) return SetupLocked(examId);
+        var classIds = exam.ExamClasses.Select(x => x.SchoolClassId).ToList();
+        var mappings = await _db.ClassSubjects.Include(x => x.Subject).Where(x => x.SchoolId == context.Value.SchoolId
+            && x.AcademicSessionId == exam.AcademicSessionId && classIds.Contains(x.SchoolClassId) && x.IsActive && x.Subject.IsActive).ToListAsync(cancellationToken);
+        var added = 0;
+        foreach (var mapping in mappings)
+        {
+            if (exam.ExamSubjects.Any(x => x.SchoolClassId == mapping.SchoolClassId && x.SubjectId == mapping.SubjectId)) continue;
+            var max = mapping.MaxMarks ?? mapping.Subject.DefaultMaxMarks ?? 100m;
+            var pass = mapping.PassMarks ?? mapping.Subject.DefaultPassMarks ?? max * .4m;
+            if (max <= 0 || pass < 0 || pass > max) { TempData["Error"] = $"Correct maximum/pass marks for {mapping.Subject.Title} in Classes before copying subjects."; return RedirectToAction(nameof(Details), new { id = examId }); }
+            exam.ExamSubjects.Add(new ExamSubject { SchoolId = context.Value.SchoolId, ExamId = examId, SchoolClassId = mapping.SchoolClassId,
+                SubjectId = mapping.SubjectId, MaxMarks = max, PassMarks = pass, WeightagePercent = 100m, IsActive = true });
+            added++;
+        }
+        await _db.SaveChangesAsync(cancellationToken);
+        await _audit.WriteAsync("Exam.SubjectsImported", "Exam", examId.ToString(), $"Subjects={added}");
+        TempData["Success"] = $"Added {added} subjects from Classes. Review maximum and pass marks before opening marks entry.";
+        return RedirectToAction(nameof(Details), new { id = examId });
+    }
+
+    [Authorize(Roles = ManageRoles)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ApproveMarks(int sheetId, int examSubjectId, int? sectionId, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return RedirectToSchoolSetup();
+        var result = await _examService.VerifyMarksAsync(context.Value.SchoolId, context.Value.UserId, sheetId, cancellationToken);
+        if (result.Success) result = await _examService.LockMarksAsync(context.Value.SchoolId, context.Value.UserId, sheetId, cancellationToken);
+        if (result.Success) await _audit.WriteAsync("Exam.MarksApprovedAndLocked", "ExamMarksSheet", sheetId.ToString());
+        TempData[result.Success ? "Success" : "Error"] = result.Success ? "Marks approved and locked for result generation." : result.Message;
         return RedirectToAction(nameof(Marks), new { examSubjectId, sectionId });
     }
 

@@ -2,6 +2,8 @@
 @{
     ViewData["Title"] = "Edit Exam";
 }
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="results-workspace">
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div><h1 class="h3 mb-1">Edit Exam</h1><p class="text-muted mb-0">Exam setup can be edited while status is Draft.</p></div>
     <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Back</a>
@@ -14,4 +16,5 @@
         <div class="mt-4"><button class="btn btn-primary">Save Changes</button></div>
     </form>
 </div></div>
+</div>
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }

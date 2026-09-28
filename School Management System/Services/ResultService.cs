@@ -19,16 +19,21 @@ public class ResultService : IResultService
         int studentId,
         CancellationToken cancellationToken = default)
     {
-        var examExists = await _db.Exams.AsNoTracking()
-            .AnyAsync(x => x.Id == examId && x.SchoolId == schoolId, cancellationToken);
-        if (!examExists) return null;
+        var exam = await _db.Exams.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == examId && x.SchoolId == schoolId, cancellationToken);
+        if (exam is null) return null;
+        var enrollment = await _db.StudentEnrollments.AsNoTracking().FirstOrDefaultAsync(x => x.SchoolId == schoolId
+            && x.AcademicSessionId == exam.AcademicSessionId && x.StudentId == studentId && x.Status == StudentEnrollmentStatus.Active, cancellationToken);
+        if (enrollment?.SchoolClassId is null) return null;
+        var expected = await _db.ExamSubjects.AsNoTracking().Where(x => x.SchoolId == schoolId && x.ExamId == examId
+            && x.SchoolClassId == enrollment.SchoolClassId && x.IsActive).Select(x => x.Id).ToListAsync(cancellationToken);
 
         var marks = await _db.StudentMarks.AsNoTracking()
             .Include(x => x.ExamSubject)
-            .Where(x => x.SchoolId == schoolId && x.ExamId == examId && x.StudentId == studentId)
+            .Where(x => x.SchoolId == schoolId && x.ExamId == examId && x.StudentId == studentId && expected.Contains(x.ExamSubjectId))
             .ToListAsync(cancellationToken);
 
-        if (marks.Count == 0) return null;
+        if (expected.Count == 0 || marks.Count != expected.Count || marks.Any(x => x.SpecialStatus == MarkSpecialStatus.None && x.ObtainedMarks == null)) return null;
 
         decimal obtained = 0m;
         decimal maximum = 0m;
@@ -240,22 +245,22 @@ public class ResultService : IResultService
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        var ranked = created
+        // Re-rank the whole class, including previously published sections.
+        var classResults = await _db.StudentResults.Where(x => x.SchoolId == schoolId && x.ExamId == examId && x.IsCurrent
+            && x.StudentEnrollment.SchoolClassId == classId).ToListAsync(cancellationToken);
+        var ranked = classResults
             .OrderByDescending(x => x.Percentage)
-            .ThenByDescending(x => x.ObtainedMarks)
             .ThenBy(x => x.StudentId)
             .ToList();
 
         int position = 0;
         decimal? lastPercentage = null;
-        decimal? lastObtained = null;
         for (var i = 0; i < ranked.Count; i++)
         {
-            if (lastPercentage != ranked[i].Percentage || lastObtained != ranked[i].ObtainedMarks)
+            if (lastPercentage != ranked[i].Percentage)
                 position = i + 1;
             ranked[i].ClassPosition = position;
             lastPercentage = ranked[i].Percentage;
-            lastObtained = ranked[i].ObtainedMarks;
         }
 
         exam.Status = ExamStatus.Published;

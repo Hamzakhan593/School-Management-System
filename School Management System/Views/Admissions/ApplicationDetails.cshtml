@@ -40,11 +40,11 @@
 
     <div class="col-lg-4">
         <div class="card border-0 shadow-sm mb-3"><div class="card-body">
-            <h5 class="card-title">Workflow</h5>
+            <h5 class="card-title">Next step</h5>
             @if (Model.Status == AdmissionApplicationStatus.Draft)
             {
                 <p class="small text-muted">Review the form and documents, then submit it for final admission approval.</p>
-                <form asp-action="SubmitApplication" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary w-100">Submit Application</button></form>
+                <form asp-action="SubmitApplication" method="post"><input type="hidden" name="id" value="@Model.Id" /><button class="btn btn-primary w-100">Submit for approval</button></form>
             }
             else if (Model.Status == AdmissionApplicationStatus.Submitted)
             {
@@ -58,7 +58,7 @@
             }
             else
             {
-                <div class="text-success">Permanent student record created.</div>
+                <div class="text-success">Student record created. Open the profile to check class / section placement before marking attendance.</div>
             }
         </div></div>
         <div class="alert alert-info small"><strong>Next step:</strong> Generate the initial fee challan after admission. @if (Model.Status == AdmissionApplicationStatus.Admitted && Model.StudentId.HasValue && (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Accountant))) { <a asp-controller="Fees" asp-action="Generate" asp-route-studentId="@Model.StudentId" asp-route-academicSessionId="@Model.AcademicSessionId" class="alert-link">Generate this student's initial challan</a> }</div>

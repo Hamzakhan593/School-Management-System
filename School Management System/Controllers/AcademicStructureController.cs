@@ -133,7 +133,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { create = "class" });
         }
 
         var entity = new SchoolClass
@@ -200,7 +200,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { create = "section" });
         }
 
         var entity = new Section
@@ -282,7 +282,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { create = "group" });
         }
         var entity = new AcademicGroup { SchoolId = schoolId.Value, SchoolClassId = model.SchoolClassId, Name = model.Name.Trim(), Description = NullIfBlank(model.Description), IsActive = model.IsActive };
         _db.AcademicGroups.Add(entity);
@@ -308,7 +308,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index));
+            return RedirectToAction(nameof(Index), new { tab = "subjects", create = "subject" });
         }
         var entity = new Subject
         {
@@ -319,7 +319,7 @@ public class AcademicStructureController : Controller
         await _db.SaveChangesAsync();
         await _audit.WriteAsync("AcademicStructure.SubjectCreated", "Subject", entity.Id.ToString(), entity.Code);
         TempData["Success"] = "Subject created.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { tab = "subjects" });
     }
 
     [Authorize(Roles = ManageRoles)]
@@ -386,7 +386,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId });
+            return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId, tab = "subjects" });
         }
 
         var entity = new ClassSubject
@@ -398,7 +398,7 @@ public class AcademicStructureController : Controller
         await _db.SaveChangesAsync();
         await _audit.WriteAsync("AcademicStructure.ClassSubjectAssigned", "ClassSubject", entity.Id.ToString());
         TempData["Success"] = "Subject assigned to class.";
-        return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId });
+        return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId, tab = "subjects" });
     }
 
     [Authorize(Roles = ManageRoles)]
@@ -441,7 +441,7 @@ public class AcademicStructureController : Controller
         if (!ModelState.IsValid)
         {
             TempData["Error"] = FirstError();
-            return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId });
+            return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId, tab = "teachers" });
         }
 
         var entity = new TeacherAssignment
@@ -454,7 +454,7 @@ public class AcademicStructureController : Controller
         await _db.SaveChangesAsync();
         await _audit.WriteAsync("AcademicStructure.TeacherAssigned", "TeacherAssignment", entity.Id.ToString());
         TempData["Success"] = "Teacher assigned.";
-        return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId });
+        return RedirectToAction(nameof(Index), new { sessionId = model.AcademicSessionId, tab = "teachers" });
     }
 
     [Authorize(Roles = ManageRoles)]
@@ -470,7 +470,7 @@ public class AcademicStructureController : Controller
         await _db.SaveChangesAsync();
         await _audit.WriteAsync("AcademicStructure.TeacherAssignmentDisabled", "TeacherAssignment", id.ToString());
         TempData["Success"] = "Teacher assignment disabled.";
-        return RedirectToAction(nameof(Index), new { sessionId = item.AcademicSessionId });
+        return RedirectToAction(nameof(Index), new { sessionId = item.AcademicSessionId, tab = "teachers" });
     }
 
     [HttpGet]

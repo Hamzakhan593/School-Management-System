@@ -37,6 +37,7 @@ public class ExamService : IExamService
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
 
+        var allowUnsectioned = isExamManager;
         if (!isExamManager)
         {
             var assignments = await _db.TeacherAssignments.AsNoTracking()
@@ -51,6 +52,8 @@ public class ExamService : IExamService
             if (assignments.Count == 0)
                 return null;
 
+            allowUnsectioned = assignments.Any(x => x.SectionId == null);
+
             if (!assignments.Any(x => x.SectionId == null))
             {
                 var allowedIds = assignments.Where(x => x.SectionId.HasValue).Select(x => x.SectionId!.Value).ToHashSet();
@@ -59,6 +62,11 @@ public class ExamService : IExamService
                     return null;
             }
         }
+
+        if (allowUnsectioned && await _db.StudentEnrollments.AnyAsync(x => x.SchoolId == schoolId
+            && x.AcademicSessionId == examSubject.Exam.AcademicSessionId && x.SchoolClassId == examSubject.SchoolClassId
+            && x.SectionId == null && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active, cancellationToken))
+            sections.Add(new Section { Id = 0, Name = "No section assigned" });
 
         var selectedSectionId = sectionId;
         if (sections.Count > 0)
@@ -70,8 +78,10 @@ public class ExamService : IExamService
         }
         else
         {
+            if (selectedSectionId.HasValue && selectedSectionId != 0) return null;
             selectedSectionId = null;
         }
+        if (selectedSectionId == 0) selectedSectionId = null;
 
         var sheet = await _db.ExamMarksSheets
             .FirstOrDefaultAsync(x => x.SchoolId == schoolId
@@ -103,8 +113,7 @@ public class ExamService : IExamService
                 && x.Status == StudentEnrollmentStatus.Active
                 && x.Student.Status == StudentStatus.Active);
 
-        if (selectedSectionId.HasValue)
-            enrollmentQuery = enrollmentQuery.Where(x => x.SectionId == selectedSectionId.Value);
+        enrollmentQuery = enrollmentQuery.Where(x => x.SectionId == selectedSectionId);
 
         var enrollments = await enrollmentQuery
             .OrderBy(x => x.RollNumber)
@@ -115,10 +124,8 @@ public class ExamService : IExamService
             .Where(x => x.ExamMarksSheetId == sheet.Id)
             .ToDictionaryAsync(x => x.StudentId, cancellationToken);
 
-        var isTeacherEditable = sheet.Status == ExamMarksSheetStatus.Draft;
         var canEdit = examSubject.Exam.Status == ExamStatus.MarksEntryOpen
-            && sheet.Status != ExamMarksSheetStatus.Locked
-            && (isExamManager || isTeacherEditable);
+            && sheet.Status == ExamMarksSheetStatus.Draft;
 
         return new MarksEntryViewModel
         {
@@ -126,12 +133,12 @@ public class ExamService : IExamService
             ExamSubjectId = examSubject.Id,
             ExamMarksSheetId = sheet.Id,
             SchoolClassId = examSubject.SchoolClassId,
-            SectionId = selectedSectionId,
+            SectionId = selectedSectionId ?? (sections.Any(x => x.Id == 0) ? 0 : null),
             ExamTitle = examSubject.Exam.Title,
             SessionName = examSubject.Exam.AcademicSession.Name,
             ClassName = examSubject.SchoolClass.Name,
             SubjectName = examSubject.Subject.Title,
-            SectionName = sections.FirstOrDefault(x => x.Id == selectedSectionId)?.Name,
+            SectionName = sections.FirstOrDefault(x => x.Id == (selectedSectionId ?? 0))?.Name,
             MaxMarks = examSubject.MaxMarks,
             PassMarks = examSubject.PassMarks,
             TheoryMaxMarks = examSubject.TheoryMaxMarks,
@@ -192,6 +199,16 @@ public class ExamService : IExamService
         foreach (var rosterRow in allowed.Rows)
         {
             var row = posted[rosterRow.StudentId];
+            if (!Enum.IsDefined(row.SpecialStatus))
+                return new(false, $"{rosterRow.StudentName}: Select a valid attendance status.");
+            if (row.TeacherRemarks?.Length > 500)
+                return new(false, $"{rosterRow.StudentName}: Keep remarks within 500 characters.");
+            // An untouched row is an incomplete draft, never a zero or an absence.
+            if (row.SpecialStatus == MarkSpecialStatus.None && !row.TheoryMarks.HasValue && !row.PracticalMarks.HasValue)
+            {
+                if (existing.TryGetValue(rosterRow.StudentId, out var cleared)) _db.StudentMarks.Remove(cleared);
+                continue;
+            }
             decimal? theory = null;
             decimal? practical = null;
             decimal? obtained = null;
@@ -244,7 +261,12 @@ public class ExamService : IExamService
         if (sheet.Status != ExamMarksSheetStatus.Draft) return new(false, "Only draft marks can be submitted.");
 
         var expected = await ExpectedStudentCountAsync(sheet, cancellationToken);
-        var entered = await _db.StudentMarks.CountAsync(x => x.ExamMarksSheetId == sheet.Id, cancellationToken);
+        var entered = await _db.StudentMarks.CountAsync(x => x.ExamMarksSheetId == sheet.Id
+            && (x.SpecialStatus != MarkSpecialStatus.None || x.ObtainedMarks.HasValue)
+            && x.StudentEnrollment.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active
+            && x.StudentEnrollment.AcademicSessionId == sheet.Exam.AcademicSessionId
+            && x.StudentEnrollment.SchoolClassId == sheet.ExamSubject.SchoolClassId
+            && x.StudentEnrollment.SectionId == sheet.SectionId, cancellationToken);
         if (expected == 0) return new(false, "There are no active students in this class/section.");
         if (entered != expected) return new(false, $"Marks are incomplete. Expected {expected} student(s), but {entered} row(s) are saved.");
 
@@ -346,8 +368,7 @@ public class ExamService : IExamService
             && x.SchoolClassId == sheet.ExamSubject.SchoolClassId
             && x.Status == StudentEnrollmentStatus.Active
             && x.Student.Status == StudentStatus.Active);
-        if (sheet.SectionId.HasValue)
-            query = query.Where(x => x.SectionId == sheet.SectionId.Value);
+        query = query.Where(x => x.SectionId == sheet.SectionId);
         return await query.CountAsync(cancellationToken);
     }
 

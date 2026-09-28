@@ -35,7 +35,7 @@ public class SettingsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> Index(CancellationToken cancellationToken)
+    public async Task<IActionResult> Index(CancellationToken cancellationToken, string? tab = null)
     {
         var user = await _schoolContext.GetCurrentUserAsync();
         if (user?.SchoolId is not int schoolId)
@@ -44,7 +44,9 @@ public class SettingsController : Controller
             return RedirectToAction("Index", "SchoolSetup");
         }
 
-        return View(await BuildViewModelAsync(schoolId, cancellationToken));
+        var model = await BuildViewModelAsync(schoolId, cancellationToken);
+        model.SelectedSection = NormalizeSection(tab);
+        return View(model);
     }
 
     [HttpPost]
@@ -61,6 +63,12 @@ public class SettingsController : Controller
         ValidatePrefix(model.ReceiptNumberPrefix, nameof(model.ReceiptNumberPrefix));
         ValidateSignature(model.PrincipalSignatureFile, nameof(model.PrincipalSignatureFile));
         ValidateSignature(model.ClassTeacherSignatureFile, nameof(model.ClassTeacherSignatureFile));
+        model.SelectedSection = NormalizeSection(model.SelectedSection);
+        try { TimeZoneInfo.FindSystemTimeZoneById(model.SchoolTimeZoneId?.Trim() ?? string.Empty); }
+        catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException or ArgumentException)
+        {
+            ModelState.AddModelError(nameof(model.SchoolTimeZoneId), "Choose a valid time zone, for example Asia/Karachi for Pakistan.");
+        }
 
         if (!ModelState.IsValid)
         {
@@ -166,7 +174,7 @@ public class SettingsController : Controller
         await _audit.WriteAsync("Settings.Updated", nameof(SystemSetting), entity.Id.ToString(), "School master settings updated.", oldSummary, newSummary);
 
         TempData["Success"] = "Settings saved. New admissions, fee numbering, attendance rules, backup scheduling and security policy now use the updated values.";
-        return RedirectToAction(nameof(Index));
+        return RedirectToAction(nameof(Index), new { tab = model.SelectedSection });
     }
 
     [HttpPost]
@@ -262,10 +270,15 @@ public class SettingsController : Controller
         model.ActiveSessionName = activeSession?.Name;
         model.FeeHeadCount = await _db.FeeHeads.AsNoTracking().CountAsync(x => x.SchoolId == schoolId && x.IsActive, cancellationToken);
         model.GradingRuleCount = activeSession is null ? 0 : await _db.GradingRules.AsNoTracking().CountAsync(x => x.GradingScheme.AcademicSessionId == activeSession.Id, cancellationToken);
-        if (model.Id > 0)
+        var saved = await _db.SystemSettings.AsNoTracking().FirstOrDefaultAsync(x => x.SchoolId == schoolId, cancellationToken);
+        if (saved is not null)
         {
+            model.Id = saved.Id;
+            model.PrincipalSignaturePath = saved.PrincipalSignaturePath;
+            model.ClassTeacherSignaturePath = saved.ClassTeacherSignaturePath;
+            model.LastUpdatedAtUtc = saved.UpdatedAtUtc;
             model.LastUpdatedBy = await _db.SystemSettings.AsNoTracking()
-                .Where(x => x.Id == model.Id)
+                .Where(x => x.Id == saved.Id && x.SchoolId == schoolId)
                 .Select(x => x.UpdatedByUser != null ? x.UpdatedByUser.FullName : null)
                 .FirstOrDefaultAsync(cancellationToken);
         }
@@ -300,5 +313,7 @@ public class SettingsController : Controller
     }
 
     private static string NormalizePrefix(string value) => value.Trim().ToUpperInvariant();
+    private static string NormalizeSection(string? section)
+        => section is "numbering" or "fees" or "attendance" or "print" or "backup" or "security" or "integrations" or "masterdata" ? section : "numbering";
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

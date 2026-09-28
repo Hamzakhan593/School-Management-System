@@ -4,10 +4,11 @@
     ViewData["Title"] = "Student Attendance";
 }
 
+<style>[data-attendance-row][hidden], #undoAttendanceBulk[hidden], #attendanceSelectionChanged[hidden] { display: none !important; }</style>
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h2 class="mb-1">Student Attendance</h2>
-        <div class="text-muted">Daily class/section attendance with controlled corrections.</div>
+        <div class="text-muted">Choose the class and date, mark students, then save attendance.</div>
     </div>
     <a class="btn btn-outline-primary" asp-action="MonthlyReport"
        asp-route-academicSessionId="@Model.AcademicSessionId"
@@ -15,97 +16,60 @@
        asp-route-sectionId="@Model.SectionId">Monthly Report</a>
 </div>
 
-<details class="workspace-subsection"><summary>Camera, biometric & attendance reports</summary><!-- Attendance method shortcuts: keep all attendance options visible inside the Attendance module -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-white border-0 pt-3 px-3">
-        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <div>
-                <h5 class="mb-1">Attendance Methods</h5>
-                <div class="text-muted small">Choose how you want to record or review student attendance.</div>
+<link rel="stylesheet" href="~/css/module-cards.css" asp-append-version="true" />
+<details class="workspace-subsection attendance-tools">
+    <summary>Camera, biometric &amp; attendance reports</summary>
+    <div class="attendance-methods">
+        <article class="attendance-method">
+            <span class="attendance-method-tag">Daily attendance</span>
+            <h3>Mark a class</h3>
+            <p>Choose a class and date, then mark students in the list below.</p>
+            <div class="attendance-method-actions"><a class="btn btn-primary" href="#attendanceFilters">Mark attendance</a></div>
+        </article>
+        <article class="attendance-method">
+            <span class="attendance-method-tag">Camera</span>
+            <h3>Camera attendance</h3>
+            <p>Open the camera to record attendance and review student matches.</p>
+            <div class="attendance-method-actions">
+                <a class="btn btn-outline-primary" asp-controller="CameraAttendance" asp-action="Index">Open camera</a>
+                @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+                {
+                    <a class="btn btn-outline-secondary" asp-controller="CameraAttendance" asp-action="Enroll">Enroll student faces</a>
+                }
             </div>
-            <span class="badge text-bg-light border">Student Attendance</span>
-        </div>
+        </article>
+        <article class="attendance-method">
+            <span class="attendance-method-tag">Fingerprint / device</span>
+            <h3>Biometric attendance</h3>
+            <p>Set up attendance devices, enroll students and check recorded scans.</p>
+            <div class="attendance-method-actions">
+                @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
+                {
+                    <a class="btn btn-outline-primary" asp-controller="AttendanceIntegrations" asp-action="Index">Manage devices &amp; scans</a>
+                }
+                else
+                {
+                    <span class="text-muted small">Ask your school administrator to manage devices.</span>
+                }
+            </div>
+        </article>
+        <article class="attendance-method">
+            <span class="attendance-method-tag">Reports</span>
+            <h3>Monthly attendance</h3>
+            <p>Review attendance percentages, absences and the monthly class register.</p>
+            <div class="attendance-method-actions"><a class="btn btn-outline-primary" asp-controller="Attendance" asp-action="MonthlyReport"
+                asp-route-academicSessionId="@Model.AcademicSessionId"
+                asp-route-schoolClassId="@(Model.SchoolClassId > 0 ? Model.SchoolClassId : null)"
+                asp-route-sectionId="@Model.SectionId">View monthly report</a></div>
+        </article>
     </div>
-    <div class="card-body pt-2">
-        <div class="row g-3">
-            <div class="col-xl-3 col-md-6">
-                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
-                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                        <div>
-                            <div class="fw-semibold fs-5">Manual Attendance</div>
-                            <div class="text-muted small">Mark class/section attendance from the roster below.</div>
-                        </div>
-                        <span class="badge text-bg-primary">Daily</span>
-                    </div>
-                    <a class="btn btn-primary btn-sm mt-2" asp-controller="Attendance" asp-action="Index">Open Manual Attendance</a>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
-                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                        <div>
-                            <div class="fw-semibold fs-5">Camera Attendance</div>
-                            <div class="text-muted small">Use a webcam/mobile camera with manual verification fallback.</div>
-                        </div>
-                        <span class="badge text-bg-success">Camera</span>
-                    </div>
-                    <div class="d-flex flex-wrap gap-2 mt-2">
-                        <a class="btn btn-success btn-sm" asp-controller="CameraAttendance" asp-action="Index">Open Camera</a>
-                        @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
-                        {
-                            <a class="btn btn-outline-success btn-sm" asp-controller="CameraAttendance" asp-action="Enroll">Face Enrollment</a>
-                        }
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
-                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                        <div>
-                            <div class="fw-semibold fs-5">Biometric Attendance</div>
-                            <div class="text-muted small">Manage biometric devices, student enrollment and incoming scan events.</div>
-                        </div>
-                        <span class="badge text-bg-warning">Device</span>
-                    </div>
-                    @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin))
-                    {
-                        <a class="btn btn-warning btn-sm mt-2" asp-controller="AttendanceIntegrations" asp-action="Index">Devices &amp; Scan Events</a>
-                    }
-                    else
-                    {
-                        <div class="small text-muted mt-2">Device setup is available to authorized administration users.</div>
-                    }
-                </div>
-            </div>
-
-            <div class="col-xl-3 col-md-6">
-                <div class="border rounded-3 p-3 h-100 bg-body-tertiary">
-                    <div class="d-flex align-items-start justify-content-between gap-2 mb-2">
-                        <div>
-                            <div class="fw-semibold fs-5">Attendance Reports</div>
-                            <div class="text-muted small">View monthly percentages, absences and attendance history.</div>
-                        </div>
-                        <span class="badge text-bg-info">Report</span>
-                    </div>
-                    <a class="btn btn-outline-primary btn-sm mt-2" asp-controller="Attendance" asp-action="MonthlyReport"
-                       asp-route-academicSessionId="@Model.AcademicSessionId"
-                       asp-route-schoolClassId="@(Model.SchoolClassId > 0 ? Model.SchoolClassId : null)"
-                       asp-route-sectionId="@Model.SectionId">Monthly Report</a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
 </details>
 <div class="card shadow-sm border-0 mb-4">
     <div class="card-body">
-        <form method="get" asp-action="Index" class="row g-3 align-items-end">
+        <form id="attendanceFilters" data-sections-url="@Url.Action("Sections")" method="get" asp-action="Index" class="row g-3 align-items-end">
             <div class="col-lg-3 col-md-6">
-                <label class="form-label">Academic Session</label>
-                <select class="form-select" name="academicSessionId">
+                <label class="form-label">School session</label>
+                <select class="form-select" name="academicSessionId" required>
                     @foreach (var session in Model.Sessions)
                     {
                         <option value="@session.Id" selected="@(session.Id == Model.AcademicSessionId)">@session.Name</option>
@@ -114,7 +78,7 @@
             </div>
             <div class="col-lg-3 col-md-6">
                 <label class="form-label">Class</label>
-                <select class="form-select" name="schoolClassId">
+                <select class="form-select" name="schoolClassId" required>
                     <option value="">-- Select class --</option>
                     @foreach (var schoolClass in Model.Classes)
                     {
@@ -134,15 +98,15 @@
             </div>
             <div class="col-lg-2 col-md-6">
                 <label class="form-label">Date</label>
-                <input class="form-control" type="date" name="attendanceDate" value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
+                <input class="form-control" type="date" name="attendanceDate" required value="@Model.AttendanceDate.ToString("yyyy-MM-dd")" />
             </div>
             <div class="col-lg-2 col-md-6">
-                <button class="btn btn-primary w-100" type="submit">Load Roster</button>
+                <button class="btn btn-primary w-100" type="submit">Show students</button>
             </div>
         </form>
         @if (Model.SchoolClassId > 0 && Model.Sections.Count > 0 && !Model.SectionId.HasValue)
         {
-            <div class="form-text mt-2">After selecting a class, choose its section and click Load Roster again.</div>
+            <div class="form-text mt-2">Choose a section, then click Show students.</div>
         }
     </div>
 </div>
@@ -166,14 +130,17 @@
         @if (Model.CanEdit)
         {
             <div class="d-flex gap-2">
-                <button type="button" id="markAllPresent" class="btn btn-sm btn-outline-success">Mark All Present</button>
-                <button type="button" id="markAllNoClass" class="btn btn-sm btn-outline-secondary">Mark All No Class</button>
+                <button type="button" id="markUnmarkedPresent" class="btn btn-sm btn-outline-success">Mark remaining Present</button>
+                <button type="button" disabled="@(!Model.AllowedStatuses.Contains(StudentAttendanceStatus.NoClass))" id="markAllNoClass" class="btn btn-sm btn-outline-secondary">No class today</button><button type="button" id="undoAttendanceBulk" class="btn btn-sm btn-outline-secondary" hidden>Undo last bulk change</button>
             </div>
         }
     </div>
 
+    <div id="attendanceSelectionChanged" class="alert alert-warning" hidden>Class, section or date changed. Click Show students to load that selection before saving.</div>
+    <div class="d-flex flex-wrap gap-2 mb-3"><label for="rosterSearch" class="visually-hidden">Find a student in this class</label><input id="rosterSearch" class="form-control" type="search" style="max-width:350px" placeholder="Find student by name, admission or roll number" /><label for="rosterFilter" class="visually-hidden">Show attendance status</label><select id="rosterFilter" class="form-select" style="max-width:220px"><option value="">All students</option><option value="0">Unmarked only</option><option value="2">Absent only</option></select></div>
+    <p id="rosterMatches" class="small text-muted" role="status"></p>
     <div id="attendanceProgress" class="workspace-roster-status" aria-live="polite"></div>
-    <form method="post" asp-action="Save">
+    <form id="attendanceForm" method="post" asp-action="Save">
         <div asp-validation-summary="All" class="text-danger"></div>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="AcademicSessionId" />
@@ -208,7 +175,7 @@
                     <tbody>
                     @for (var i = 0; i < Model.Students.Count; i++)
                     {
-                        <tr>
+                        <tr data-attendance-row>
                             <td>@(i + 1)</td>
                             <td>
                                 <div class="fw-semibold">@Model.Students[i].StudentName</div>
@@ -231,11 +198,11 @@
                                     {
                                         if (Model.Students[i].Status == status)
                                         {
-                                            <option value="@((int)status)" selected>@status</option>
+                                            <option value="@((int)status)" selected>@(status == StudentAttendanceStatus.NoClass ? "No class" : status == StudentAttendanceStatus.HalfDay ? "Half day" : status.ToString())</option>
                                         }
                                         else
                                         {
-                                            <option value="@((int)status)">@status</option>
+                                            <option value="@((int)status)">@(status == StudentAttendanceStatus.NoClass ? "No class" : status == StudentAttendanceStatus.HalfDay ? "Half day" : status.ToString())</option>
                                         }
                                     }
                                 </select>
@@ -259,8 +226,8 @@
             </div>
             @if (Model.CanEdit)
             {
-                <div class="card-footer bg-white d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary px-4">Save Attendance</button>
+                <div class="card-footer bg-white d-flex flex-wrap gap-3 align-items-center justify-content-between">
+                    <span id="attendanceSaveState" class="small" role="status">Changes are saved when you click Save attendance.</span><button type="submit" class="btn btn-primary px-4">Save attendance</button>
                 </div>
             }
         </div>
@@ -271,14 +238,4 @@ else if (Model.SchoolClassId > 0 && (Model.Sections.Count == 0 || Model.SectionI
     <div class="alert alert-info">No students are enrolled in this class/section for the selected date.</div>
 }
 
-@section Scripts {
-<script>
-    (() => {
-        const setAll = (value) => {
-            document.querySelectorAll('.attendance-status:not(:disabled)').forEach(x => { x.value = value; x.dispatchEvent(new Event("change")); });
-        };
-        document.getElementById('markAllPresent')?.addEventListener('click', () => { if (confirm("Mark every student in this roster Present? Review absences before saving.")) setAll('@((int)StudentAttendanceStatus.Present)'); });
-        document.getElementById('markAllNoClass')?.addEventListener('click', () => setAll('@((int)StudentAttendanceStatus.NoClass)'));
-    })();
-</script>
-}
+@section Scripts { <script src="~/js/attendance-marking.js" asp-append-version="true"></script> }

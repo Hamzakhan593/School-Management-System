@@ -1,0 +1,16 @@
+/* Shared navigation: each destination reads as a distinct, keyboard-accessible control. */
+.sms-nav .sms-nav-link { border: 1px solid #dde6df; background: #f4f7f5; color: #3e5849; border-radius: 10px; margin: .4rem 0; padding: .65rem .8rem; min-height: 52px; font-weight: 600; line-height: 1.4; box-shadow: none; transition: background-color .15s, border-color .15s; }
+.sms-nav .sms-nav-link > span { min-width: 0; }
+.sms-nav .sms-nav-link svg { width: 32px; height: 32px; padding: 6px; border-radius: 7px; background: #e6eee8; color: #496b57; flex: 0 0 32px; opacity: 1; }
+.sms-nav .sms-nav-link:hover { background: #e8f1eb; color: #194e3b; border-color: #b4c9bc; transform: none; }
+.sms-nav .sms-nav-link.active { background: #deeee4; border-color: #8fb49d; color: #194e3b; font-weight: 700; box-shadow: inset 3px 0 #24664e; }
+.sms-nav .sms-nav-link.active:before { content: none; }
+.sms-nav .sms-nav-link.active svg { color: #fff; background: #24664e; }
+.sms-nav .sms-nav-link:focus-visible { outline: 3px solid #99711e !important; outline-offset: 2px; }
+.sms-nav details > summary { cursor: pointer; list-style: none; position: relative; padding-right: 2rem; }
+.sms-nav details > summary::-webkit-details-marker { display: none; }
+.sms-nav details > summary::after { content: '›'; position: absolute; right: .75rem; font-size: 1.3rem; transform: rotate(0); }
+.sms-nav details[open] > summary::after { transform: rotate(90deg); }
+.sms-nav details > div { margin-left: .8rem; padding-left: .6rem; border-left: 1px solid #d9e3dc; }
+.sms-nav details > div .sms-nav-link { font-size: .88rem; }
+@media (prefers-reduced-motion: reduce) { .sms-nav .sms-nav-link { transition: none; } }

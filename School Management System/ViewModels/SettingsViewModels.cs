@@ -5,6 +5,7 @@ namespace School_Management_System.ViewModels;
 
 public class SettingsPageViewModel
 {
+    public string SelectedSection { get; set; } = "numbering";
     public int Id { get; set; }
 
     [Display(Name = "Admission prefix"), Required, StringLength(12)] public string AdmissionNumberPrefix { get; set; } = "STD";

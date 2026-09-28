@@ -1,0 +1,84 @@
+using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using School_Management_System.Controllers;
+using School_Management_System.ViewModels;
+using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using School_Management_System.Data;
+using School_Management_System.Models;
+using School_Management_System.Services;
+
+using var connection = new SqliteConnection("Data Source=:memory:");
+await connection.OpenAsync();
+var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+using var db = new ApplicationDbContext(options);
+await db.Database.EnsureCreatedAsync();
+var school = new School { Name = "Test school" };
+var session = new AcademicSession { School = school, Name = "2026", Status = AcademicSessionStatus.Active };
+var teacher = new ApplicationUser { Id = "teacher", UserName = "teacher", FullName = "Teacher" };
+var schoolClass = new SchoolClass { School = school, Name = "Class 6", IsActive = true };
+var a = new Section { School = school, SchoolClass = schoolClass, Name = "A", IsActive = true };
+var b = new Section { School = school, SchoolClass = schoolClass, Name = "B", IsActive = true };
+var english = new Subject { School = school, Code = "ENG", Title = "English", IsActive = true };
+var exam = new Exam { School = school, AcademicSession = session, Title = "Term 1", IsActive = true, Status = ExamStatus.MarksEntryOpen };
+var subject = new ExamSubject { School = school, Exam = exam, SchoolClass = schoolClass, Subject = english, MaxMarks = 100, PassMarks = 40, WeightagePercent = 100, IsActive = true };
+db.AddRange(teacher, subject, a, b, new ExamClass { School = school, Exam = exam, SchoolClass = schoolClass });
+for (var i = 1; i <= 3; i++) db.StudentEnrollments.Add(new() { School = school, AcademicSession = session, SchoolClass = schoolClass, Section = i == 3 ? b : a, ClassName = "Class 6", Status = StudentEnrollmentStatus.Active, Student = new() { School = school, FullName = "Student " + i, AdmissionNumber = "S" + i, Status = StudentStatus.Active } });
+db.TeacherAssignments.Add(new() { School = school, AcademicSession = session, SchoolClass = schoolClass, Subject = english, Section = a, TeacherUser = teacher, IsActive = true });
+await db.SaveChangesAsync();
+var service = new ExamService(db);
+var results = new ResultService(db);
+void Check(bool condition, string message) { if (!condition) throw new Exception(message); Console.WriteLine("PASS " + message); }
+Check(await service.BuildMarksEntryAsync(school.Id, "other", false, subject.Id, a.Id) is null, "unassigned teacher cannot access marks");
+Check(await service.BuildMarksEntryAsync(school.Id, teacher.Id, false, subject.Id, b.Id) is null, "teacher cannot access another section");
+var sheet = (await service.BuildMarksEntryAsync(school.Id, teacher.Id, false, subject.Id, a.Id))!;
+sheet.Rows[0].TheoryMarks = 80;
+Check((await service.SaveMarksAsync(school.Id, teacher.Id, false, sheet)).Success, "partial draft saves");
+Check(await db.StudentMarks.CountAsync() == 1, "blank draft is not saved as zero");
+Check(!(await service.SubmitMarksAsync(school.Id, teacher.Id, false, sheet.ExamMarksSheetId)).Success, "incomplete draft cannot submit");
+Check(await results.CalculateStudentExamAsync(school.Id, exam.Id, sheet.Rows[1].StudentId) is null, "missing marks cannot become result");
+sheet.Rows[1].TheoryMarks = 100;
+Check((await service.SaveMarksAsync(school.Id, teacher.Id, false, sheet)).Success, "complete marks save");
+Check((await service.SubmitMarksAsync(school.Id, teacher.Id, false, sheet.ExamMarksSheetId)).Success, "complete draft submits");
+Check(!(await service.SaveMarksAsync(school.Id, teacher.Id, true, sheet)).Success, "submitted marks require explicit reopen even for manager");
+await service.VerifyMarksAsync(school.Id, teacher.Id, sheet.ExamMarksSheetId);
+await service.LockMarksAsync(school.Id, teacher.Id, sheet.ExamMarksSheetId);
+var other = (await service.BuildMarksEntryAsync(school.Id, teacher.Id, true, subject.Id, b.Id))!;
+other.Rows[0].TheoryMarks = 80;
+await service.SaveMarksAsync(school.Id, teacher.Id, true, other);
+await service.SubmitMarksAsync(school.Id, teacher.Id, true, other.ExamMarksSheetId);
+await service.VerifyMarksAsync(school.Id, teacher.Id, other.ExamMarksSheetId);
+await service.LockMarksAsync(school.Id, teacher.Id, other.ExamMarksSheetId);
+exam.Status = ExamStatus.MarksLocked; await db.SaveChangesAsync();
+await results.PublishClassResultsAsync(school.Id, teacher.Id, exam.Id, schoolClass.Id, a.Id, null);
+await results.PublishClassResultsAsync(school.Id, teacher.Id, exam.Id, schoolClass.Id, b.Id, null);
+var published = (await db.StudentResults.ToListAsync()).OrderByDescending(x => x.Percentage).ToList();
+Check(published.Select(x => x.ClassPosition).SequenceEqual(new int?[] { 1, 2, 2 }), "class positions span sections and share ties");
+Check(published[0].Percentage == 100 && published[0].Grade == "A+", "totals and grades calculated");
+teacher.SchoolId = school.Id;
+ResultsController NewController() => new(db, new TestSchoolContext(teacher, school), results, null!, null!) { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Role, AppRoles.Principal)], "Test")) } } };
+var card = (ResultCardViewModel)((ViewResult)await NewController().ResultCard(exam.Id, published[0].StudentId, default)).Model!;
+Check(card.SchoolRankingComplete && card.SchoolPosition == 1 && card.SchoolCandidateCount == 3, "school position calculated for complete published exam");
+published[2].IsCurrent = false; await db.SaveChangesAsync();
+card = (ResultCardViewModel)((ViewResult)await NewController().ResultCard(exam.Id, published[0].StudentId, default)).Model!;
+Check(!card.SchoolRankingComplete && card.SchoolPosition is null, "school position stays pending when a result is missing");
+published[2].IsCurrent = true; await db.SaveChangesAsync();
+var changed = await db.StudentMarks.FirstAsync(x => x.StudentId == published[0].StudentId);
+changed.UpdatedAtUtc = published[0].PublishedAtUtc.AddMinutes(1); await db.SaveChangesAsync();
+Check(await NewController().ResultCard(exam.Id, published[0].StudentId, default) is NotFoundResult, "changed marks cannot be mixed with stale published total");
+exam.Status = ExamStatus.MarksEntryOpen;
+db.StudentEnrollments.Add(new() { School = school, AcademicSession = session, SchoolClass = schoolClass, ClassName = "Class 6", Status = StudentEnrollmentStatus.Active, Student = new() { School = school, FullName = "No section student", AdmissionNumber = "S4", Status = StudentStatus.Active } });
+await db.SaveChangesAsync();
+var unsectioned = await service.BuildMarksEntryAsync(school.Id, teacher.Id, true, subject.Id, 0);
+Check(unsectioned?.Rows.Count == 1 && unsectioned.Rows[0].AdmissionNumber == "S4", "unsectioned students have their own reachable marks sheet");
+Check(await service.BuildMarksEntryAsync(school.Id, teacher.Id, false, subject.Id, 0) is null, "section teacher cannot access unsectioned students");
+Console.WriteLine("Academic service checks passed (isolated SQLite database).");
+
+class TestSchoolContext(ApplicationUser user, School school) : ISchoolContextService
+{
+    public Task<ApplicationUser?> GetCurrentUserAsync() => Task.FromResult<ApplicationUser?>(user);
+    public Task<int?> GetCurrentSchoolIdAsync() => Task.FromResult<int?>(school.Id);
+    public Task<School?> GetCurrentSchoolAsync() => Task.FromResult<School?>(school);
+}
+

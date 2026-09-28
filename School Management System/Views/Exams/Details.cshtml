@@ -7,13 +7,16 @@
     var configuredKeys = exam.ExamSubjects.Select(x => $"{x.SchoolClassId}:{x.SubjectId}").ToHashSet();
 }
 
+<link rel="stylesheet" href="~/css/academics.css" asp-append-version="true" />
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="academic-page results-workspace">
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
     <div>
         <div class="d-flex gap-2 align-items-center"><h1 class="h3 mb-0">@exam.Title</h1><span class="badge bg-secondary">@exam.Status</span></div>
-        <div class="text-muted mt-1">@exam.AcademicSession.Name · @exam.ExamType · @(exam.Term?.Name ?? "No term") · @exam.StartDate.ToString("dd MMM")–@exam.EndDate.ToString("dd MMM yyyy")</div>
+        <div class="text-muted mt-1">@exam.AcademicSession.Name &middot; @exam.ExamType &middot; @(exam.Term?.Name ?? "No term") &middot; @exam.StartDate.ToString("dd MMM") to @exam.EndDate.ToString("dd MMM yyyy")</div>
     </div>
     <div class="d-flex gap-2">
-        <a class="btn btn-outline-secondary" asp-action="Index" asp-route-sessionId="@exam.AcademicSessionId">All Exams</a>
+        <a class="btn btn-primary" asp-action="Workspace" asp-route-examId="@exam.Id">Enter marks</a><a class="btn btn-outline-secondary" asp-action="Index" asp-route-sessionId="@exam.AcademicSessionId">All Exams</a>
         @if (canManage && isDraft) { <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@exam.Id">Edit Exam</a> }
     </div>
 </div>
@@ -24,10 +27,10 @@
 }
 @if (exam.Status == ExamStatus.MarksLocked)
 {
-    <div class="alert alert-success"><strong>complete for this exam:</strong> all expected marks sheets are locked. Result calculation/publication is handled in .</div>
+    <div class="alert alert-success">All marks are approved. <a href="/Results">Open Results to publish and download result cards.</a></div>
 }
 
-<div class="row g-4 mb-4">
+<div class="structure-layout">
     <div class="col-lg-5">
         <div class="card shadow-sm h-100"><div class="card-body">
             <h5>Exam Classes</h5>
@@ -70,7 +73,7 @@
     <div class="col-lg-7">
         <div class="card shadow-sm h-100"><div class="card-body">
             <h5>Workflow</h5>
-            <div class="small text-muted mb-3">Draft setup → Open marks → Teacher saves draft → Submit → Exam Controller verifies → Locks each sheet → Lock whole exam.</div>
+            <div class="small text-muted mb-3">Draft setup  &rarr;  Open marks  &rarr;  Teacher saves draft  &rarr;  Submit  &rarr;  Exam Controller verifies  &rarr;  Locks each sheet  &rarr;  Lock whole exam.</div>
             @if (canManage && exam.Status == ExamStatus.Draft)
             {
                 <form asp-action="OpenMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@exam.Id" /><button class="btn btn-primary">Open Marks Entry</button></form>
@@ -98,8 +101,8 @@
             <form asp-action="AddSubject" method="post" class="border rounded p-3 mb-2">
                 @Html.AntiForgeryToken()
                 <input type="hidden" name="ExamId" value="@exam.Id" /><input type="hidden" name="SchoolClassId" value="@map.SchoolClassId" /><input type="hidden" name="SubjectId" value="@map.SubjectId" />
-                <div class="row g-2 align-items-end">
-                    <div class="col-lg-3"><div class="fw-semibold">@map.SchoolClass.Name · @map.Subject.Title</div><div class="small text-muted">@map.Subject.Code</div></div>
+                <div class="exam-setup-fields">
+                    <div class="col-lg-3"><div class="fw-semibold">@map.SchoolClass.Name &middot; @map.Subject.Title</div><div class="small text-muted">@map.Subject.Code</div></div>
                     <div class="col-6 col-lg-1"><label class="form-label small">Max</label><input class="form-control form-control-sm" name="MaxMarks" type="number" step="0.01" min="0.01" value="@max" required /></div>
                     <div class="col-6 col-lg-1"><label class="form-label small">Pass</label><input class="form-control form-control-sm" name="PassMarks" type="number" step="0.01" min="0" value="@pass" required /></div>
                     <div class="col-6 col-lg-2"><label class="form-label small">Theory Max</label><input class="form-control form-control-sm" name="TheoryMaxMarks" type="number" step="0.01" min="0" value="@(map.Subject.HasTheory && !map.Subject.HasPractical ? max : null)" /></div>
@@ -115,59 +118,32 @@
 
 <div class="card shadow-sm mb-4"><div class="card-body">
     <h5 class="mb-3">Configured Exam Subjects</h5>
+    @if (canManage && isDraft) { <form asp-action="ImportClassSubjects" method="post" class="academic-panel"><input type="hidden" name="examId" value="@exam.Id" /><strong>Use the subjects already set up in Classes</strong><p class="academic-note">Copy missing subjects for the exam's classes in one click. Uses your saved marks settings; if missing, starts with 100 maximum marks and 40% pass marks. Review below before opening entry.</p><button class="btn btn-primary">Copy class subjects</button></form> }
     @if (!exam.ExamSubjects.Any())
     {
         <div class="text-muted">No exam subjects configured yet.</div>
     }
     else
     {
-        <div class="table-responsive"><table class="table align-middle">
-            <thead><tr><th>Class</th><th>Subject</th><th>Marks Setup</th><th>Sheets</th><th></th></tr></thead>
-            <tbody>
-            @foreach (var s in exam.ExamSubjects.OrderBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.Subject.Title))
-            {
-                var sheets = Model.MarksSheets.Where(x => x.ExamSubjectId == s.Id).ToList();
-                <tr>
-                    <td>@s.SchoolClass.Name</td><td><strong>@s.Subject.Title</strong><div class="small text-muted">@s.Subject.Code</div></td>
-                    <td>
-                        @if (canManage && isDraft)
-                        {
-                            <form asp-action="UpdateSubject" method="post" class="d-flex flex-wrap gap-1 align-items-center">
-                                @Html.AntiForgeryToken()<input type="hidden" name="id" value="@s.Id" />
-                                <input title="Max" class="form-control form-control-sm" style="width:75px" name="maxMarks" type="number" step="0.01" value="@s.MaxMarks" />
-                                <input title="Pass" class="form-control form-control-sm" style="width:75px" name="passMarks" type="number" step="0.01" value="@s.PassMarks" />
-                                <input title="Theory max" class="form-control form-control-sm" style="width:75px" name="theoryMaxMarks" type="number" step="0.01" value="@s.TheoryMaxMarks" placeholder="T" />
-                                <input title="Practical max" class="form-control form-control-sm" style="width:75px" name="practicalMaxMarks" type="number" step="0.01" value="@s.PracticalMaxMarks" placeholder="P" />
-                                <input title="Weight %" class="form-control form-control-sm" style="width:75px" name="weightagePercent" type="number" step="0.01" value="@s.WeightagePercent" />
-                                <button class="btn btn-sm btn-outline-primary">Save</button>
-                            </form>
-                        }
-                        else
-                        {
-                            <span>Max @s.MaxMarks · Pass @s.PassMarks · Weight @s.WeightagePercent%</span>
-                            @if (s.TheoryMaxMarks.HasValue || s.PracticalMaxMarks.HasValue) { <div class="small text-muted">Theory @(s.TheoryMaxMarks?.ToString("0.##") ?? "-") / Practical @(s.PracticalMaxMarks?.ToString("0.##") ?? "-")</div> }
-                        }
-                    </td>
-                    <td>
-                        @if (!sheets.Any()) { <span class="text-muted">Not started</span> }
-                        else
-                        {
-                            @foreach (var sh in sheets.OrderBy(x => x.Section?.Name)) { <span class="badge bg-light text-dark border me-1">@(sh.Section?.Name ?? "Class") · @sh.Status</span> }
-                        }
-                    </td>
-                    <td class="text-end">
-                        @if (exam.Status != ExamStatus.Draft)
-                        {
-                            <a class="btn btn-sm btn-primary" asp-action="Marks" asp-route-examSubjectId="@s.Id">Enter / Review Marks</a>
-                        }
-                        @if (canManage && isDraft)
-                        {
-                            <form asp-action="RemoveSubject" method="post" class="d-inline">@Html.AntiForgeryToken()<input type="hidden" name="id" value="@s.Id" /><button class="btn btn-sm btn-outline-danger">Remove</button></form>
-                        }
-                    </td>
-                </tr>
+        <div class="result-class-grid">
+        @foreach(var subject in exam.ExamSubjects.OrderBy(x=>x.SchoolClass.SortOrder).ThenBy(x=>x.Subject.Title)){
+            var sheets = Model.MarksSheets.Where(x=>x.ExamSubjectId == subject.Id).ToList();
+            <article class="results-panel"><span class="results-eyebrow">@subject.SchoolClass.Name</span><h3>@subject.Subject.Title</h3>
+            @if(canManage && isDraft){
+            <details class="result-publish"><summary>Edit maximum &amp; pass marks</summary><form asp-action="UpdateSubject" method="post" class="exam-setup-fields"><input type="hidden" name="id" value="@subject.Id" />
+            <label>Maximum marks<input class="form-control" name="maxMarks" type="number" step="0.01" min="0.01" value="@subject.MaxMarks" required /></label>
+            <label>Pass marks<input class="form-control" name="passMarks" type="number" step="0.01" min="0" value="@subject.PassMarks" required /></label>
+            <label>Theory maximum<input class="form-control" name="theoryMaxMarks" type="number" step="0.01" min="0" value="@subject.TheoryMaxMarks" /></label>
+            <label>Practical maximum<input class="form-control" name="practicalMaxMarks" type="number" step="0.01" min="0" value="@subject.PracticalMaxMarks" /></label>
+            <label>Weight (%)<input class="form-control" name="weightagePercent" type="number" step="0.01" min="0.01" value="@subject.WeightagePercent" required /></label><div><button class="btn btn-primary">Save marks settings</button></div></form></details>
             }
-            </tbody>
-        </table></div>
+            <p class="results-note">Maximum @subject.MaxMarks.ToString("0.##") &middot; Pass @subject.PassMarks.ToString("0.##") &middot; Weight @subject.WeightagePercent.ToString("0.##")%</p>
+            @if(!sheets.Any()){<p class="results-note">Marks not started yet.</p>}else{<div class="result-chips">@foreach(var sheet in sheets){<span>@(sheet.Section?.Name ?? "No section") &middot; @(sheet.Status == ExamMarksSheetStatus.Locked ? "Approved" : sheet.Status.ToString())</span>}</div>}
+            <div class="results-actions">@if(exam.Status != ExamStatus.Draft){<a class="btn btn-primary" asp-action="Marks" asp-route-examSubjectId="@subject.Id">Enter / review marks</a>}@if(canManage && isDraft){<form asp-action="RemoveSubject" method="post"><input type="hidden" name="id" value="@subject.Id" /><button class="btn btn-outline-danger">Remove subject</button></form>}</div>
+            </article>
+        }
+        </div>
     }
 </div></div>
+
+</div>

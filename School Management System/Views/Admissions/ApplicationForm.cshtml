@@ -4,8 +4,8 @@
     var action = isNew ? "StartAdmission" : "EditApplication";
     ViewData["Title"] = isNew ? "Admission Form" : "Edit Admission Form";
 }
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div><h2 class="mb-1">@(isNew ? "New Admission Form" : "Edit Admission Form")</h2><p class="text-muted mb-0">Start with student and guardian details. Additional information is optional.</p></div>
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-4">
+    <div><h2 class="mb-1">@(isNew ? "New Admission Form" : "Edit Admission Form")</h2><p class="text-muted mb-0">Fill in the student and guardian details. Save the form, review it, then complete admission.</p></div>
     <a asp-action="@(isNew ? "Index" : "ApplicationDetails")" asp-route-id="@(isNew ? null : Model.Id)" class="btn btn-outline-secondary">Back</a>
 </div>
 <div class="card border-0 shadow-sm"><div class="card-body p-4">
@@ -14,21 +14,22 @@
     <input asp-for="AdmissionEnquiryId" type="hidden" />
     <div asp-validation-summary="All" class="text-danger mb-3"></div>
 
-    <h5 class="mb-3">Student Information</h5>
+    <div class="alert alert-info small">1. Fill in details → 2. Review &amp; submit → 3. Approve admission. The student record is created only after final approval.</div>
+    <h5 class="mb-3">1. Student &amp; class details</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-6"><label asp-for="StudentName" class="form-label"></label><input asp-for="StudentName" class="form-control" /><span asp-validation-for="StudentName" class="text-danger"></span></div>
         <div class="col-md-3"><label asp-for="Gender" class="form-label"></label><input asp-for="Gender" class="form-control" placeholder="Male / Female" /><span asp-validation-for="Gender" class="text-danger"></span></div>
-        <div class="col-md-3"><label asp-for="DateOfBirth" class="form-label"></label><input asp-for="DateOfBirth" class="form-control" /><span asp-validation-for="DateOfBirth" class="text-danger"></span></div>
-        <div class="col-md-4"><label asp-for="DesiredClass" class="form-label"></label><input list="admissionClasses" asp-for="DesiredClass" class="form-control" /><span asp-validation-for="DesiredClass" class="text-danger"></span></div>
-        <div class="col-md-6"><label asp-for="AcademicSessionId" class="form-label"></label><select asp-for="AcademicSessionId" asp-items="ViewBag.AcademicSessions" class="form-select"></select><span asp-validation-for="AcademicSessionId" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="DateOfBirth" class="form-label"></label><input asp-for="DateOfBirth" class="form-control" value="@(Model.DateOfBirth == default ? "" : Model.DateOfBirth.ToString("yyyy-MM-dd"))" /><span asp-validation-for="DateOfBirth" class="text-danger"></span></div>
+        <div class="col-md-4"><label asp-for="DesiredClass" class="form-label"></label><select asp-for="DesiredClass" class="form-select"><option value="">Choose a class</option>@if (ViewBag.SchoolClasses is IEnumerable<string> availableClasses) { foreach(var className in availableClasses) { <option value="@className">@className</option> } }</select><span asp-validation-for="DesiredClass" class="text-danger"></span></div>
+        <div class="col-md-6"><label asp-for="AcademicSessionId" class="form-label"></label><select asp-for="AcademicSessionId" asp-items="ViewBag.AdmissionSessions" class="form-select"><option value="">Choose a school session</option></select><span asp-validation-for="AcademicSessionId" class="text-danger"></span></div>
         <div class="col-md-6"><label asp-for="AdmissionDate" class="form-label"></label><input asp-for="AdmissionDate" class="form-control" /><span asp-validation-for="AdmissionDate" class="text-danger"></span></div>
     </div>
 
-    <h5 class="mb-3">Guardian Information</h5>
+    <h5 class="mb-3">2. Parent / guardian contact</h5>
     <div class="row g-3 mb-4">
         <div class="col-md-6"><label asp-for="GuardianName" class="form-label"></label><input asp-for="GuardianName" class="form-control" /><span asp-validation-for="GuardianName" class="text-danger"></span></div>
-        <div class="col-md-3"><label asp-for="GuardianRelationship" class="form-label"></label><input asp-for="GuardianRelationship" class="form-control" /><span asp-validation-for="GuardianRelationship" class="text-danger"></span></div>
-        <div class="col-md-3"><label asp-for="GuardianPhone" class="form-label"></label><input asp-for="GuardianPhone" class="form-control" /><span asp-validation-for="GuardianPhone" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="GuardianRelationship" class="form-label"></label><input asp-for="GuardianRelationship" list="guardianRelationships" class="form-control" placeholder="Father, mother or guardian" /><span asp-validation-for="GuardianRelationship" class="text-danger"></span></div>
+        <div class="col-md-3"><label asp-for="GuardianPhone" class="form-label"></label><input asp-for="GuardianPhone" type="tel" class="form-control" placeholder="e.g. 03001234567" /><span asp-validation-for="GuardianPhone" class="text-danger"></span></div>
     </div>
 
     <details class="workspace-subsection"><summary>Additional information · optional</summary><div class="row g-3 mb-4">        <div class="col-md-4"><label asp-for="BFormCnic" class="form-label"></label><input asp-for="BFormCnic" class="form-control" /><span asp-validation-for="BFormCnic" class="text-danger"></span></div>
@@ -54,9 +55,11 @@
     </div>
 
     </details>
-    <div class="workspace-actions"><button type="submit" class="btn btn-primary">Save Admission</button></div>
+    <div class="workspace-actions"><button type="submit" class="btn btn-primary">Save &amp; review admission</button><span class="text-muted small ms-2">This saves a draft. You can check it before approval.</span></div>
 </form>
 </div></div>
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }
 
 <datalist id="admissionClasses">@if (ViewBag.SchoolClasses is IEnumerable<string> schoolClasses) { foreach(var classLabel in schoolClasses) { <option value="@classLabel"></option> } }</datalist>
+
+<datalist id="guardianRelationships"><option value="Father"></option><option value="Mother"></option><option value="Guardian"></option></datalist>

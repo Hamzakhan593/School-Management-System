@@ -16,12 +16,31 @@
 </div>
 
 <partial name="_StudentSearch" />
-<div class="row g-3 mb-4">
-    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Current Month Charges</div><div class="fs-3 fw-semibold">PKR @Model.CurrentMonthCharges.ToString("N2")</div><div class="small text-muted">Billing period @Model.BillingPeriod · @Model.ChallansThisMonth challan(s)</div></div></div></div>
-    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Collected This Month</div><div class="fs-3 fw-semibold">PKR @Model.CurrentMonthCollected.ToString("N2")</div><div class="small text-muted">@DateTime.Today.ToString("01 MMM") – @DateTime.Today.ToString("dd MMM yyyy")</div></div></div></div>
-    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Total Outstanding</div><div class="fs-3 fw-semibold">PKR @Model.TotalOutstanding.ToString("N2")</div><div class="small text-muted">All periods · as of @DateTime.Today.ToString("dd MMM yyyy")</div></div></div></div>
-    <div class="col-xl-3 col-md-6"><div class="card border-0 shadow-sm h-100"><div class="card-body"><div class="text-muted small">Overdue Students</div><div class="fs-3 fw-semibold">@Model.OverdueStudentCount</div></div></div></div>
-</div>
+<link rel="stylesheet" href="~/css/module-cards.css" asp-append-version="true" />
+<section class="fees-summary" aria-label="School fee summary">
+    <div class="fees-summary-grid">
+        <article class="fee-metric">
+            <h3>This month’s fees</h3>
+            <div class="fee-metric-value"><span class="fee-currency">PKR</span><strong class="fee-amount">@Model.CurrentMonthCharges.ToString("N2")</strong></div>
+            <p>@Model.ChallansThisMonth challan(s) · @Model.BillingPeriod</p>
+        </article>
+        <article class="fee-metric">
+            <h3>Collected this month</h3>
+            <div class="fee-metric-value"><span class="fee-currency">PKR</span><strong class="fee-amount">@Model.CurrentMonthCollected.ToString("N2")</strong></div>
+            <p>@DateTime.Today.ToString("01 MMM") – @DateTime.Today.ToString("dd MMM yyyy")</p>
+        </article>
+        <article class="fee-metric">
+            <h3>Total unpaid fees</h3>
+            <div class="fee-metric-value"><span class="fee-currency">PKR</span><strong class="fee-amount">@Model.TotalOutstanding.ToString("N2")</strong></div>
+            <p>All months · as of @DateTime.Today.ToString("dd MMM yyyy")</p>
+        </article>
+        <article class="fee-metric">
+            <h3>Students with overdue fees</h3>
+            <div class="fee-metric-value"><span class="fee-currency">Students</span><strong class="fee-amount">@Model.OverdueStudentCount.ToString("N0")</strong></div>
+            <p>Students with unpaid fees past the due date</p>
+        </article>
+    </div>
+</section>
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">

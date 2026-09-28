@@ -68,6 +68,13 @@ public class AttendanceController : Controller
             if (input is not null) { row.Status = input.Status; row.Remarks = input.Remarks; }
         }
         roster.CorrectionReason = posted.CorrectionReason;
+        // Rows are rebuilt from the authorized roster; posted indices may have a different order.
+        foreach (var key in ModelState.Keys.Where(x => x.StartsWith("Students[", StringComparison.Ordinal)).ToList())
+        {
+            foreach (var error in ModelState[key]!.Errors)
+                ModelState.AddModelError(string.Empty, string.IsNullOrWhiteSpace(error.ErrorMessage) ? "Check each student's attendance status and remarks." : error.ErrorMessage);
+            ModelState.Remove(key);
+        }
         return View("Index", roster);
     }
 

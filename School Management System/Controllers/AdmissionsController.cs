@@ -231,9 +231,20 @@ public class AdmissionsController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> StartAdmission(int enquiryId)
+    public async Task<IActionResult> StartAdmission(int? enquiryId)
     {
-        var enquiry = await FindOwnedEnquiryAsync(enquiryId);
+        if (!enquiryId.HasValue)
+        {
+            var schoolId = await RequireSchoolIdAsync();
+            if (!schoolId.HasValue) return RedirectToSchoolSetup();
+            var directModel = new AdmissionApplicationFormViewModel
+            {
+                AcademicSessionId = await GetActiveSessionIdAsync(schoolId.Value) ?? 0
+            };
+            await LoadSessionsAsync(schoolId.Value, directModel.AcademicSessionId);
+            return View("ApplicationForm", directModel);
+        }
+        var enquiry = await FindOwnedEnquiryAsync(enquiryId.Value);
         if (enquiry is null) return NotFound();
         if (enquiry.Stage != AdmissionEnquiryStage.Approved)
         {
@@ -263,7 +274,7 @@ public class AdmissionsController : Controller
             GuardianPhone = enquiry.ContactNumber,
             GuardianRelationship = "Parent / Guardian",
             AdmissionDate = DateTime.Today,
-            DateOfBirth = DateTime.Today.AddYears(-5)
+            DateOfBirth = default
         };
 
         await LoadSessionsAsync(enquiry.SchoolId, model.AcademicSessionId);
@@ -564,6 +575,12 @@ public class AdmissionsController : Controller
 
         if (model.DateOfBirth.Date >= model.AdmissionDate.Date)
             ModelState.AddModelError(nameof(model.DateOfBirth), "Date of birth must be before the admission date.");
+        if (model.DateOfBirth == default)
+            ModelState.AddModelError(nameof(model.DateOfBirth), "Enter the student's date of birth.");
+        if (model.AdmissionDate == default)
+            ModelState.AddModelError(nameof(model.AdmissionDate), "Choose an admission date.");
+        if (!await _db.SchoolClasses.AnyAsync(x => x.SchoolId == schoolId && x.IsActive && x.Name == model.DesiredClass))
+            ModelState.AddModelError(nameof(model.DesiredClass), "Choose an active school class. If it is missing, ask your administrator to add it in school setup.");
     }
 
     private AdmissionApplication BuildApplication(AdmissionApplicationFormViewModel model, int schoolId)
@@ -676,6 +693,7 @@ public class AdmissionsController : Controller
             .OrderByDescending(x => x.StartDate)
             .ToListAsync();
         ViewBag.AcademicSessions = new SelectList(sessions, "Id", "Name", selected);
+        ViewBag.AdmissionSessions = new SelectList(sessions.Where(x => x.Status == AcademicSessionStatus.Active || x.Status == AcademicSessionStatus.Draft), "Id", "Name", selected);
         ViewBag.SchoolClasses = await _db.SchoolClasses.AsNoTracking().Where(x => x.SchoolId == schoolId && x.IsActive).OrderBy(x => x.SortOrder).Select(x => x.Name).ToListAsync();
     }
 

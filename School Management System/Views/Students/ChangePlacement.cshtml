@@ -4,19 +4,19 @@
     var classes = (IEnumerable<SchoolClass>)(ViewBag.Classes ?? Array.Empty<SchoolClass>());
     var sections = (IEnumerable<Section>)(ViewBag.Sections ?? Array.Empty<Section>());
     var groups = (IEnumerable<AcademicGroup>)(ViewBag.Groups ?? Array.Empty<AcademicGroup>());
-    ViewData["Title"] = "Change Student Placement";
+    ViewData["Title"] = "Change Class / Section";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex flex-wrap gap-3 justify-content-between align-items-center mb-3">
     <div>
-        <h1 class="h3 mb-1">Academic Placement</h1>
+        <h1 class="h3 mb-1">Class &amp; section</h1>
         <p class="text-muted mb-0">@student.FullName â€” @student.AdmissionNumber</p>
     </div>
     <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@student.Id">Back to Profile</a>
 </div>
 
 <div class="alert alert-info">
-    Choose an existing class, section and group. Saving a new placement keeps the previous placement in history.
+    Choose an existing class, section and group. Previous class details will stay in the student’s history.
 </div>
 
 <div class="card shadow-sm">
@@ -49,7 +49,7 @@
                 </div>
                 <div class="col-md-4">
                     <label asp-for="SectionId" class="form-label"></label>
-                    <select asp-for="SectionId" id="SectionId" class="form-select">
+                    <select asp-for="SectionId" id="SectionId" data-dependent-select class="form-select">
                         <option value="">No section</option>
                         @foreach (var item in sections)
                         {
@@ -63,7 +63,7 @@
                 </div>
                 <div class="col-md-6">
                     <label asp-for="AcademicGroupId" class="form-label"></label>
-                    <select asp-for="AcademicGroupId" id="AcademicGroupId" class="form-select">
+                    <select asp-for="AcademicGroupId" id="AcademicGroupId" data-dependent-select class="form-select">
                         <option value="">No group / stream</option>
                         @foreach (var item in groups)
                         {
@@ -80,7 +80,7 @@
                     <textarea asp-for="Notes" rows="3" class="form-control"></textarea>
                 </div>
             </div>
-            <button class="btn btn-primary mt-4" type="submit">Save New Placement</button>
+            <button class="btn btn-primary mt-4" type="submit">Save class / section</button>
         </form>
     </div>
 </div>
@@ -98,8 +98,9 @@
                 const selectedClass = classSelect?.value || '';
                 [...select.options].forEach((option, index) => {
                     if (index === 0) return;
-                    const visible = !selectedClass || option.dataset.classId === selectedClass;
+                    const visible = !!selectedClass && option.dataset.classId === selectedClass;
                     option.hidden = !visible;
+                    option.disabled = !visible;
                     if (!visible && option.selected) select.value = '';
                 });
             }

@@ -6,18 +6,18 @@
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
     <div>
         <h1 class="h3 mb-1">Students</h1>
-        <p class="text-muted mb-0">Search and view the complete student profile and academic placement history.</p>
+        <p class="text-muted mb-0">Find a student, update their details, or open their class and guardian information.</p>
     </div>
     @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Receptionist))
     {
-        <a class="btn btn-primary" asp-controller="Admissions" asp-action="CreateEnquiry">Add Student</a>
+        <a class="btn btn-primary" asp-controller="Admissions" asp-action="StartAdmission">Add student / new admission</a>
     }
 </div>
 
 <div class="row g-3 mb-4 student-summary">
     <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Total Students</div><div class="display-6 fw-semibold">@Model.TotalStudents</div></div></div></div>
     <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Active</div><div class="display-6 fw-semibold">@Model.ActiveStudents</div></div></div></div>
-    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Other Status</div><div class="display-6 fw-semibold">@Model.InactiveStudents</div></div></div></div>
+    <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><div class="text-muted">Inactive / other</div><div class="display-6 fw-semibold">@Model.InactiveStudents</div></div></div></div>
 </div>
 
 <div class="card shadow-sm mb-4">
@@ -83,7 +83,7 @@
                 <tbody>
                 @if (Model.Students.Count == 0)
                 {
-                    <tr><td colspan="7" class="text-center text-muted py-5">No students match the selected filters.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-5">No students match these filters. Try a name or admission number, or clear the filters above.</td></tr>
                 }
                 else
                 {
@@ -94,7 +94,7 @@
                         <tr>
                             <td class="fw-semibold">@student.AdmissionNumber</td>
                             <td>
-                                <div class="fw-semibold">@student.FullName</div>
+                                <a class="fw-semibold" asp-action="Details" asp-route-id="@student.Id">@student.FullName</a>
                                 <small class="text-muted">@(student.BFormCnic ?? "No B-Form/CNIC")</small>
                             </td>
                             <td>

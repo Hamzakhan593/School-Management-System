@@ -11,6 +11,7 @@ public class ResultsIndexViewModel
 
 public class ClassResultViewModel
 {
+    public int MissingMarksCount { get; set; }
     public required Exam Exam { get; set; }
     public required SchoolClass SchoolClass { get; set; }
     public Section? Section { get; set; }
@@ -40,6 +41,10 @@ public class ClassResultRowViewModel
 
 public class ResultCardViewModel
 {
+    public int? SchoolPosition { get; set; }
+    public int SchoolCandidateCount { get; set; }
+    public int ClassCandidateCount { get; set; }
+    public bool SchoolRankingComplete { get; set; }
     public required School School { get; set; }
     public required Exam Exam { get; set; }
     public required Student Student { get; set; }
@@ -50,6 +55,7 @@ public class ResultCardViewModel
 
 public class ResultCardSubjectRowViewModel
 {
+    public decimal WeightagePercent { get; set; } = 100m;
     public string Subject { get; set; } = string.Empty;
     public decimal MaximumMarks { get; set; }
     public decimal PassMarks { get; set; }

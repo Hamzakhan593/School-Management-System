@@ -18,6 +18,8 @@ public class ResultsController : Controller
     private readonly IResultService _results;
     private readonly IResultPdfService _pdf;
     private readonly IAuditService _audit;
+    private sealed record RankingCandidate(int StudentId, decimal Percentage, int? SchoolClassId);
+    private readonly Dictionary<int, (List<RankingCandidate> Cohort, bool Complete)> _rankingCache = [];
 
     public ResultsController(ApplicationDbContext db, ISchoolContextService schoolContext, IResultService results, IResultPdfService pdf, IAuditService audit)
     {
@@ -99,6 +101,38 @@ public class ResultsController : Controller
     [Authorize(Roles = ManageRoles)]
     [HttpPost]
     [ValidateAntiForgeryToken]
+    public async Task<IActionResult> PublishSchool(int examId, CancellationToken cancellationToken)
+    {
+        var context = await GetContextAsync();
+        if (context is null) return RedirectToSchoolSetup();
+        var exam = await _db.Exams.AsNoTracking().Include(x => x.ExamClasses)
+            .FirstOrDefaultAsync(x => x.Id == examId && x.SchoolId == context.Value.SchoolId, cancellationToken);
+        if (exam is null) return NotFound();
+        var count = 0;
+        try
+        {
+            foreach (var item in exam.ExamClasses)
+            {
+                // Already published classes must use the explicit correction workflow.
+                var existing = await _db.StudentResults.AnyAsync(x => x.SchoolId == context.Value.SchoolId && x.ExamId == examId
+                    && x.IsCurrent && x.StudentEnrollment.SchoolClassId == item.SchoolClassId, cancellationToken);
+                if (existing) continue;
+                var hasStudents = await _db.StudentEnrollments.AnyAsync(x => x.SchoolId == context.Value.SchoolId
+                    && x.AcademicSessionId == exam.AcademicSessionId && x.SchoolClassId == item.SchoolClassId
+                    && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active, cancellationToken);
+                if (!hasStudents) continue;
+                count += (await _results.PublishClassResultsAsync(context.Value.SchoolId, context.Value.UserId, examId, item.SchoolClassId, null, null, cancellationToken)).Count;
+            }
+            await _audit.WriteAsync("Result.SchoolPublished", "Exam", examId.ToString(), $"NewResults={count}");
+            TempData["Success"] = count > 0 ? $"Published {count} new result cards. Download the whole-school PDF below." : "No new classes to publish. Open a class to review existing results or publish corrections.";
+        }
+        catch (InvalidOperationException ex) { TempData["Error"] = $"{count} new result(s) published. {ex.Message} Open each class to review its progress."; }
+        return RedirectToAction(nameof(Index), new { sessionId = exam.AcademicSessionId });
+    }
+
+    [Authorize(Roles = ManageRoles)]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> BeginCorrection(int examId, string reason, CancellationToken cancellationToken)
     {
         var context = await GetContextAsync();
@@ -169,9 +203,9 @@ public class ResultsController : Controller
             if (card is not null) cards.Add(card);
         }
 
-        if (cards.Count == 0)
+        if (cards.Count == 0 || cards.Count != studentIds.Count)
         {
-            TempData["Error"] = "Publish results before generating result cards.";
+            TempData["Error"] = "Publish results before generating result cards. If marks were corrected, publish the corrected version first.";
             return RedirectToAction(nameof(ClassResult), new { examId, classId, sectionId });
         }
 
@@ -214,6 +248,7 @@ public class ResultsController : Controller
         return File(await _pdf.CreateBulkResultCardsPdfAsync(cards, cancellationToken), "application/pdf", $"Selected-ResultCards-Exam-{examId}.pdf");
     }
 
+    [Authorize(Roles = ManageRoles)]
     [HttpGet]
     public async Task<IActionResult> AllResultCardsPdf(int examId, CancellationToken cancellationToken)
     {
@@ -242,6 +277,11 @@ public class ResultsController : Controller
         if (cards.Count == 0)
         {
             TempData["Error"] = "No published result cards are available for this exam.";
+            return RedirectToAction(nameof(Index));
+        }
+        if (cards.Count != resultRows.Count || cards.Any(x => !x.SchoolRankingComplete))
+        {
+            TempData["Error"] = "Publish all classes and any corrected results before downloading the whole-school PDF. Individual and class cards remain available for published results.";
             return RedirectToAction(nameof(Index));
         }
         return File(await _pdf.CreateBulkResultCardsPdfAsync(cards, cancellationToken), "application/pdf", $"All-ResultCards-Exam-{examId}.pdf");
@@ -323,8 +363,7 @@ public class ResultsController : Controller
 
         var enrollments = await _db.StudentEnrollments.AsNoTracking().Include(x => x.Student)
             .Where(x => x.SchoolId == schoolId && x.AcademicSessionId == exam.AcademicSessionId && x.SchoolClassId == classId
-                && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active
-                && (!sectionId.HasValue || x.SectionId == sectionId.Value))
+                && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active)
             .OrderBy(x => x.RollNumber).ThenBy(x => x.Student.FullName)
             .ToListAsync(cancellationToken);
 
@@ -375,30 +414,30 @@ public class ResultsController : Controller
             });
         }
 
-        if (snapshots.Count == 0)
+        if (rows.Count == enrollments.Count)
         {
-            var ranked = rows.OrderByDescending(x => x.Percentage).ThenByDescending(x => x.ObtainedMarks).ToList();
+            var ranked = rows.OrderByDescending(x => x.Percentage).ToList();
             int position = 0;
             decimal? lastPercentage = null;
-            decimal? lastObtained = null;
             for (var i = 0; i < ranked.Count; i++)
             {
-                if (lastPercentage != ranked[i].Percentage || lastObtained != ranked[i].ObtainedMarks) position = i + 1;
+                if (lastPercentage != ranked[i].Percentage) position = i + 1;
                 ranked[i].Position = position;
                 lastPercentage = ranked[i].Percentage;
-                lastObtained = ranked[i].ObtainedMarks;
             }
         }
 
+        var visibleIds = enrollments.Where(x => !sectionId.HasValue || x.SectionId == sectionId).Select(x => x.StudentId).ToHashSet();
         return new ClassResultViewModel
         {
             Exam = exam,
             SchoolClass = schoolClass,
             Section = section,
             Sections = sections,
-            Rows = rows.OrderBy(x => x.RollNumber).ThenBy(x => x.StudentName).ToList(),
-            HasPublishedResults = snapshots.Count > 0,
-            CanPublish = exam.Status == ExamStatus.MarksLocked || exam.Status == ExamStatus.Published,
+            Rows = rows.Where(x => visibleIds.Contains(x.StudentId)).OrderBy(x => x.RollNumber).ThenBy(x => x.StudentName).ToList(),
+            HasPublishedResults = rows.Any(x => visibleIds.Contains(x.StudentId) && x.PublishedVersion.HasValue),
+            MissingMarksCount = visibleIds.Count - rows.Count(x => visibleIds.Contains(x.StudentId)),
+            CanPublish = rows.Count == enrollments.Count && (exam.Status == ExamStatus.MarksLocked || exam.Status == ExamStatus.Published),
             IsCorrectionInProgress = exam.Status == ExamStatus.MarksEntryOpen && snapshots.Count > 0
         };
     }
@@ -411,7 +450,7 @@ public class ResultsController : Controller
             .Include(x => x.Student)
             .Include(x => x.StudentEnrollment)
             .FirstOrDefaultAsync(x => x.SchoolId == context.SchoolId && x.ExamId == examId && x.StudentId == studentId && x.IsCurrent, cancellationToken);
-        if (result is null) return null;
+        if (result is null || result.Exam.Status == ExamStatus.MarksEntryOpen) return null;
         if (!await CanAccessClassAsync(context, examId, result.StudentEnrollment.SchoolClassId ?? 0, result.StudentEnrollment.SectionId, cancellationToken)) return null;
 
         var marks = await _db.StudentMarks.AsNoTracking()
@@ -422,6 +461,7 @@ public class ResultsController : Controller
 
         var subjectRows = marks.Select(x => new ResultCardSubjectRowViewModel
         {
+            WeightagePercent = x.ExamSubject.WeightagePercent,
             Subject = x.ExamSubject.Subject.Title,
             MaximumMarks = x.ExamSubject.MaxMarks,
             PassMarks = x.ExamSubject.PassMarks,
@@ -431,6 +471,31 @@ public class ResultsController : Controller
             Remarks = x.TeacherRemarks
         }).ToList();
 
+        // Never combine changed subject marks with an older published total.
+        if (marks.Any(x => x.UpdatedAtUtc > result.PublishedAtUtc)) return null;
+        if (!_rankingCache.TryGetValue(examId, out var ranking))
+        {
+            var candidates = await _db.StudentResults.AsNoTracking()
+                .Where(x => x.SchoolId == context.SchoolId && x.ExamId == examId && x.IsCurrent)
+                .Select(x => new RankingCandidate(x.StudentId, x.Percentage, x.StudentEnrollment.SchoolClassId)).ToListAsync(cancellationToken);
+            var expectedIds = await _db.StudentEnrollments.AsNoTracking()
+                .Where(x => x.SchoolId == context.SchoolId && x.AcademicSessionId == result.Exam.AcademicSessionId
+                    && x.Status == StudentEnrollmentStatus.Active && x.Student.Status == StudentStatus.Active
+                    && _db.ExamClasses.Any(c => c.ExamId == examId && c.SchoolClassId == x.SchoolClassId))
+                .Select(x => x.StudentId).ToListAsync(cancellationToken);
+            var isComplete = expectedIds.Count > 0 && expectedIds.All(id => candidates.Any(x => x.StudentId == id))
+                && result.Exam.Status == ExamStatus.Published
+                && !await _db.StudentMarks.AnyAsync(m => m.SchoolId == context.SchoolId && m.ExamId == examId
+                    && _db.StudentResults.Any(r => r.SchoolId == context.SchoolId && r.ExamId == examId && r.IsCurrent
+                        && r.StudentId == m.StudentId && m.UpdatedAtUtc > r.PublishedAtUtc), cancellationToken);
+            ranking = (candidates, isComplete);
+            _rankingCache[examId] = ranking;
+        }
+        var cohort = ranking.Cohort;
+        var complete = ranking.Complete;
+        var classCohort = cohort.Where(x => x.SchoolClassId == result.StudentEnrollment.SchoolClassId).ToList();
+        result.ClassPosition = 1 + classCohort.Count(x => x.Percentage > result.Percentage);
+
         return new ResultCardViewModel
         {
             School = result.School,
@@ -438,6 +503,10 @@ public class ResultsController : Controller
             Student = result.Student,
             Enrollment = result.StudentEnrollment,
             Result = result,
+            ClassCandidateCount = classCohort.Count,
+            SchoolCandidateCount = cohort.Count,
+            SchoolRankingComplete = complete,
+            SchoolPosition = complete ? 1 + cohort.Count(x => x.Percentage > result.Percentage) : null,
             Subjects = subjectRows
         };
     }
@@ -446,6 +515,8 @@ public class ResultsController : Controller
     {
         var exam = await _db.Exams.AsNoTracking().FirstOrDefaultAsync(x => x.Id == examId && x.SchoolId == context.SchoolId, cancellationToken);
         if (exam is null) return false;
+        if (!await _db.ExamClasses.AnyAsync(x => x.ExamId == examId && x.SchoolClassId == classId, cancellationToken)) return false;
+        if (sectionId.HasValue && !await _db.Sections.AnyAsync(x => x.SchoolId == context.SchoolId && x.SchoolClassId == classId && x.Id == sectionId, cancellationToken)) return false;
         if (IsManager()) return true;
         return await _db.TeacherAssignments.AsNoTracking().AnyAsync(x => x.SchoolId == context.SchoolId
             && x.AcademicSessionId == exam.AcademicSessionId

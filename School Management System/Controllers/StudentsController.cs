@@ -46,6 +46,9 @@ public class StudentsController : Controller
         var schoolId = await RequireSchoolIdAsync();
         if (!schoolId.HasValue) return RedirectToSchoolSetup();
 
+        className = string.IsNullOrWhiteSpace(className) ? null : className.Trim();
+        sectionName = string.IsNullOrWhiteSpace(sectionName) ? null : sectionName.Trim();
+
         var query = _db.Students
             .AsNoTracking()
             .AsSplitQuery()

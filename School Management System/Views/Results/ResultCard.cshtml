@@ -5,6 +5,8 @@
     var printSettings = await SettingsService.GetAsync(Model.School.Id);
 }
 
+<link rel="stylesheet" href="~/css/academics.css" asp-append-version="true" />
+<div class="academic-page">
 <div class="d-flex justify-content-between align-items-center mb-3">
     <div>
         <h2 class="mb-1">Result Card</h2>
@@ -18,7 +20,7 @@
 
 <div class="card shadow-sm">
     <div class="card-body p-4">
-        <div class="text-center mb-4">
+        <div class="result-brand">
             @if (!string.IsNullOrWhiteSpace(Model.School.LogoPath))
             {
                 <img src="@Model.School.LogoPath" alt="School logo" style="max-height:80px" class="mb-2" />
@@ -51,20 +53,21 @@
             </table>
         </div>
 
-        <div class="row g-3 mt-1">
-            <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Total</div><strong>@Model.Result.ObtainedMarks.ToString("0.##") / @Model.Result.MaximumMarks.ToString("0.##")</strong></div></div>
-            <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Percentage</div><strong>@Model.Result.Percentage.ToString("0.00")%</strong></div></div>
-            <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Grade</div><strong>@Model.Result.Grade</strong></div></div>
+        <div class="academic-metrics">
+            <div ><div class="border rounded p-3"><div class="small text-muted">Total</div><strong>@Model.Result.ObtainedMarks.ToString("0.##") / @Model.Result.MaximumMarks.ToString("0.##")</strong></div></div>
+            <div ><div class="border rounded p-3"><div class="small text-muted">Percentage</div><strong>@Model.Result.Percentage.ToString("0.00")%</strong></div></div>
+            <div ><div class="border rounded p-3"><div class="small text-muted">Grade</div><strong>@Model.Result.Grade</strong></div></div>
             @if (printSettings.ResultCardShowClassPosition)
             {
-                <div class="col-md-2"><div class="border rounded p-3"><div class="small text-muted">Position</div><strong>@(Model.Result.ClassPosition?.ToString() ?? "-")</strong></div></div>
+                <div ><div class="border rounded p-3"><div class="small text-muted">Position</div><strong>@(Model.Result.ClassPosition?.ToString() ?? "-")</strong></div></div>
             }
             @if (printSettings.ResultCardShowAttendance)
             {
-                <div class="col-md-3"><div class="border rounded p-3"><div class="small text-muted">Attendance</div><strong>@(Model.Result.AttendancePercentage.HasValue ? Model.Result.AttendancePercentage.Value.ToString("0.00") + "%" : "-")</strong></div></div>
+                <div ><div class="border rounded p-3"><div class="small text-muted">Attendance</div><strong>@(Model.Result.AttendancePercentage.HasValue ? Model.Result.AttendancePercentage.Value.ToString("0.00") + "%" : "-")</strong></div></div>
             }
         </div>
 
+        <div class="academic-panel"><strong>School position: @(Model.SchoolPosition.HasValue ? Model.SchoolPosition + " / " + Model.SchoolCandidateCount : "Pending publication of all classes")</strong><p class="academic-note">Compared by percentage in the same exam. Equal percentages share a position. Class position includes all published sections.</p></div>
         <div class="alert @(Model.Result.IsPassed ? "alert-success" : "alert-danger") mt-4"><strong>Final Result: @(Model.Result.IsPassed ? "PASS" : "FAIL")</strong></div>
         @if (!string.IsNullOrWhiteSpace(Model.Result.TeacherRemarks))
         {
@@ -104,4 +107,6 @@
             </div>
         </div>
     </div>
+</div>
+
 </div>

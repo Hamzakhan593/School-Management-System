@@ -1,16 +1,19 @@
 @model School_Management_System.ViewModels.MarksEntryViewModel
 @{
     ViewData["Title"] = "Marks Entry";
+    var showTheory = Model.TheoryMaxMarks.HasValue || !Model.PracticalMaxMarks.HasValue;
 }
+<link rel="stylesheet" href="~/css/academics.css" asp-append-version="true" />
+<div class="academic-page">
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
     <div>
         <h1 class="h3 mb-1">@Model.SubjectName Marks</h1>
         <div class="text-muted">@Model.ExamTitle · @Model.SessionName · @Model.ClassName @(string.IsNullOrWhiteSpace(Model.SectionName) ? "" : "- " + Model.SectionName)</div>
     </div>
     <div class="d-flex gap-2 align-items-center">
-        <span class="badge bg-light text-dark border">Exam: @Model.ExamStatus</span>
-        <span class="badge bg-secondary">Sheet: @Model.SheetStatus</span>
-        <a class="btn btn-outline-secondary btn-sm" asp-action="Details" asp-route-id="@Model.ExamId">Exam Setup</a>
+        <span class="badge bg-light text-dark border">@(Model.ExamStatus == ExamStatus.MarksEntryOpen ? "Marks entry open" : "Marks closed")</span>
+        <span class="badge bg-secondary">@(Model.SheetStatus == ExamMarksSheetStatus.Draft ? "Draft" : Model.SheetStatus == ExamMarksSheetStatus.Submitted ? "Awaiting approval" : Model.SheetStatus == ExamMarksSheetStatus.Locked ? "Approved & locked" : "Verified")</span>
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Workspace" asp-route-examId="@Model.ExamId">Choose another subject</a>
     </div>
 </div>
 
@@ -51,37 +54,41 @@
 }
 else
 {
-    <form asp-action="SaveMarks" method="post" id="marksForm">
+    <form asp-action="SaveMarks" method="post" id="marksForm" data-managed-form="true">
+<div asp-validation-summary="All" class="text-danger" role="alert"></div>
+<div class="marks-toolbar"><div><label for="marksSearch">Find a student</label><input id="marksSearch" class="form-control" type="search" placeholder="Name, roll or admission number" /></div><div><label for="marksFilter">Show students</label><select id="marksFilter" class="form-select"><option value="all">All students</option><option value="incomplete">Marks not entered</option><option value="complete">Completed</option></select></div><p id="marksProgress" role="status" aria-live="polite"></p></div>
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="ExamId" /><input type="hidden" asp-for="ExamSubjectId" /><input type="hidden" asp-for="ExamMarksSheetId" /><input type="hidden" asp-for="SchoolClassId" /><input type="hidden" asp-for="SectionId" />
         <div class="card shadow-sm mb-3"><div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead class="table-light"><tr><th>#</th><th>Student</th><th>Status</th><th>@(Model.TheoryMaxMarks.HasValue ? "Theory" : "Marks")</th>@if (Model.PracticalMaxMarks.HasValue) { <th>Practical</th> }<th>Remarks</th></tr></thead>
+            <table class="table align-middle mb-0 marks-table">
+                <thead class="table-light"><tr><th>#</th><th>Student</th><th>Status</th>@if (showTheory) { <th>@(Model.TheoryMaxMarks.HasValue ? "Theory" : "Marks")</th> } @if (Model.PracticalMaxMarks.HasValue) { <th>Practical</th> }<th>Remarks</th></tr></thead>
                 <tbody>
                 @for (var i = 0; i < Model.Rows.Count; i++)
                 {
-                    <tr>
+                    <tr data-mark-row>
                         <td>@(i + 1)<input type="hidden" asp-for="Rows[i].StudentId" /><input type="hidden" asp-for="Rows[i].StudentEnrollmentId" /></td>
                         <td><strong>@Model.Rows[i].StudentName</strong><div class="small text-muted">Roll @(Model.Rows[i].RollNumber ?? "-") · @Model.Rows[i].AdmissionNumber</div></td>
                         <td>
                             @if (Model.CanEdit)
                             {
-                                <select asp-for="Rows[i].SpecialStatus" class="form-select form-select-sm mark-status" data-row="@i" asp-items="Html.GetEnumSelectList<MarkSpecialStatus>()"></select>
+                                <select asp-for="Rows[i].SpecialStatus" class="form-select form-select-sm mark-status" data-row="@i" aria-label="Status for @Model.Rows[i].StudentName"><option value="0">Present</option><option value="1">Absent</option><option value="2">Exempt</option></select>
                             }
                             else { <span>@Model.Rows[i].SpecialStatus</span> }
                         </td>
+                        @if (showTheory) {
                         <td>
                             @if (Model.CanEdit)
                             {
-                                <input asp-for="Rows[i].TheoryMarks" class="form-control form-control-sm mark-input mark-theory-@i" type="number" step="0.01" min="0" max="@(Model.TheoryMaxMarks ?? Model.MaxMarks)" />
+                                <input asp-for="Rows[i].TheoryMarks" class="form-control form-control-sm mark-input mark-theory-@i" aria-label="Marks for @Model.Rows[i].StudentName" type="number" step="0.01" min="0" max="@(Model.TheoryMaxMarks ?? Model.MaxMarks)" />
                             }
                             else { <span>@(Model.Rows[i].SpecialStatus == MarkSpecialStatus.None ? Model.Rows[i].TheoryMarks?.ToString("0.##") : "-")</span> }
                         </td>
+                        }
                         @if (Model.PracticalMaxMarks.HasValue)
                         {
-                            <td>@if (Model.CanEdit) { <input asp-for="Rows[i].PracticalMarks" class="form-control form-control-sm mark-input mark-practical-@i" type="number" step="0.01" min="0" max="@Model.PracticalMaxMarks" /> } else { <span>@(Model.Rows[i].SpecialStatus == MarkSpecialStatus.None ? Model.Rows[i].PracticalMarks?.ToString("0.##") : "-")</span> }</td>
+                            <td>@if (Model.CanEdit) { <input asp-for="Rows[i].PracticalMarks" class="form-control form-control-sm mark-input mark-practical-@i" aria-label="Marks for @Model.Rows[i].StudentName" type="number" step="0.01" min="0" max="@Model.PracticalMaxMarks" /> } else { <span>@(Model.Rows[i].SpecialStatus == MarkSpecialStatus.None ? Model.Rows[i].PracticalMarks?.ToString("0.##") : "-")</span> }</td>
                         }
-                        <td>@if (Model.CanEdit) { <input asp-for="Rows[i].TeacherRemarks" class="form-control form-control-sm" maxlength="500" /> } else { <span>@Model.Rows[i].TeacherRemarks</span> }</td>
+                        <td>@if (Model.CanEdit) { <input asp-for="Rows[i].TeacherRemarks" class="form-control form-control-sm mark-remarks" aria-label="Remarks for @Model.Rows[i].StudentName" maxlength="500" /> } else { <span>@Model.Rows[i].TeacherRemarks</span> }</td>
                     </tr>
                 }
                 </tbody>
@@ -89,22 +96,17 @@ else
         </div></div>
         @if (Model.CanEdit)
         {
-            <button class="btn btn-primary">Save Draft Marks</button>
-            <span class="text-muted small ms-2">Save draft before submitting for verification.</span>
+            <div class="marks-savebar"><div><strong>Save your work</strong><p data-dirty>Drafts can have blank marks. Submit when every student is complete.</p></div><div class="academic-actions"><button class="btn btn-outline-primary" name="submit" value="false">Save draft</button>@if (Model.CanSubmit) { <button class="btn btn-primary" name="submit" value="true">Save &amp; submit to principal</button> }</div></div>
         }
     </form>
 }
 
 <div class="card shadow-sm mt-4"><div class="card-body">
-    <h5>Marks Workflow</h5>
+    <h5>Review &amp; approval</h5><p class="academic-note">Submitted marks are reviewed by the school, then locked before result cards are generated.</p>
     <div class="d-flex flex-wrap gap-2 align-items-end">
-        @if (Model.CanSubmit)
-        {
-            <form asp-action="SubmitMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-outline-primary">Submit for Verification</button></form>
-        }
         @if (Model.CanVerify)
         {
-            <form asp-action="VerifyMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-success">Verify Marks</button></form>
+            <form asp-action="ApproveMarks" method="post">@Html.AntiForgeryToken()<input type="hidden" name="sheetId" value="@Model.ExamMarksSheetId" /><input type="hidden" name="examSubjectId" value="@Model.ExamSubjectId" /><input type="hidden" name="sectionId" value="@Model.SectionId" /><button class="btn btn-success">Approve &amp; lock marks</button></form>
         }
         @if (Model.CanLock)
         {
@@ -121,21 +123,7 @@ else
     </div>
 </div></div>
 
+</div>
 @section Scripts {
-<script>
-(function () {
-    function updateRow(select) {
-        var row = select.getAttribute('data-row');
-        var disabled = select.value !== '0';
-        document.querySelectorAll('.mark-theory-' + row + ', .mark-practical-' + row).forEach(function (input) {
-            input.disabled = disabled;
-            if (disabled) input.value = '';
-        });
-    }
-    document.querySelectorAll('.mark-status').forEach(function (select) {
-        updateRow(select);
-        select.addEventListener('change', function () { updateRow(select); });
-    });
-})();
-</script>
+<script src="~/js/marks-entry.js" asp-append-version="true"></script>
 }

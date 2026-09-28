@@ -4,18 +4,20 @@
     var canManage = User.IsInRole("SuperAdmin") || User.IsInRole("Principal") || User.IsInRole("Admin") || User.IsInRole("ExamController");
 }
 
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="results-workspace">
 <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3">
     <div>
         <h2 class="mb-1">@Model.Exam.Title — @Model.SchoolClass.Name</h2>
         <div class="text-muted">Section: @(Model.Section?.Name ?? "All Sections") · Status: @Model.Exam.Status</div>
     </div>
-    <div class="d-flex gap-2 flex-wrap">
+    <div class="results-actions">
         <a asp-action="Index" class="btn btn-outline-secondary">Back</a>
         <a asp-action="SubjectPerformance" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-outline-primary">Subject Analysis</a>
-        <a asp-action="ClassResultSheetPdf" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-outline-dark">Class Result PDF</a>
+        <a asp-action="ClassResultSheetPdf" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-outline-dark">Summary sheet · PDF</a>
         @if (Model.HasPublishedResults)
         {
-            <a asp-action="BulkResultCardsPdf" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-success">Bulk Result Cards PDF</a>
+            <a asp-action="BulkResultCardsPdf" asp-route-examId="@Model.Exam.Id" asp-route-classId="@Model.SchoolClass.Id" asp-route-sectionId="@Model.Section?.Id" class="btn btn-success">Class cards · PDF</a>
         }
     </div>
 </div>
@@ -41,6 +43,8 @@
     </form>
 }
 
+@if (Model.MissingMarksCount > 0) { <div class="alert alert-warning">@Model.MissingMarksCount student(s) still need complete marks. Finish all subjects before publishing this class.</div> }
+<p class="results-note">Class positions include all sections. Equal percentages share a position.</p>
 @if (Model.Rows.Count == 0)
 {
     <div class="alert alert-warning">No calculable student marks were found for this class/section.</div>
@@ -52,34 +56,25 @@ else
         <input type="hidden" name="examId" value="@Model.Exam.Id" />
         <input type="hidden" name="classId" value="@Model.SchoolClass.Id" />
         <input type="hidden" name="sectionId" value="@Model.Section?.Id" />
+        <div class="result-roster-toolbar p-3"><label for="resultStudentSearch">Find a student<input type="search" class="form-control" id="resultStudentSearch" placeholder="Name, roll or admission number" /></label><span id="resultSearchCount" role="status">@Model.Rows.Count students shown</span><label class="result-select-all"><input type="checkbox" class="form-check-input" id="selectAllResults" /> Select all published students</label></div>
         <div class="card-body p-0 table-responsive">
-            <table class="table table-striped table-hover mb-0 align-middle">
+            <table class="table table-striped table-hover mb-0 align-middle result-student-table">
                 <thead class="table-light">
                     <tr>
-                        <th style="width:36px"></th><th>Pos.</th><th>Roll No.</th><th>Student</th><th>Obtained</th><th>Max</th><th>%</th><th>Grade</th><th>Status</th><th>Attendance</th><th>Version</th><th></th>
+                        <th>Select</th><th>Student</th><th>Marks</th><th>Percentage</th><th>Position</th><th>Result</th><th>Action</th>
                     </tr>
                 </thead>
                 <tbody>
                 @foreach (var row in Model.Rows)
                 {
-                    <tr>
-                        <td>@if (row.PublishedVersion.HasValue) { <input class="form-check-input" type="checkbox" name="studentIds" value="@row.StudentId" /> }</td>
-                        <td>@(row.Position?.ToString() ?? "-")</td>
-                        <td>@(row.RollNumber ?? "-")</td>
-                        <td><strong>@row.StudentName</strong><div class="small text-muted">@row.AdmissionNumber</div></td>
-                        <td>@row.ObtainedMarks.ToString("0.##")</td>
-                        <td>@row.MaximumMarks.ToString("0.##")</td>
-                        <td>@row.Percentage.ToString("0.00")%</td>
-                        <td>@row.Grade</td>
-                        <td><span class="badge @(row.IsPassed ? "bg-success" : "bg-danger")">@(row.IsPassed ? "PASS" : "FAIL")</span></td>
-                        <td>@(row.AttendancePercentage.HasValue ? row.AttendancePercentage.Value.ToString("0.00") + "%" : "-")</td>
-                        <td>@(row.PublishedVersion?.ToString() ?? "Preview")</td>
-                        <td>
-                            @if (row.PublishedVersion.HasValue)
-                            {
-                                <a class="btn btn-sm btn-outline-primary" asp-action="ResultCard" asp-route-examId="@Model.Exam.Id" asp-route-studentId="@row.StudentId">Card</a>
-                            }
-                        </td>
+                    <tr data-result-student="@row.StudentName @row.AdmissionNumber @row.RollNumber">
+                        <td>@if(row.PublishedVersion.HasValue){<input class="form-check-input" type="checkbox" name="studentIds" value="@row.StudentId" aria-label="Select @row.StudentName" />}</td>
+                        <td class="result-student-name"><strong>@row.StudentName</strong><small>Roll @(row.RollNumber ?? "-") - @row.AdmissionNumber</small><small>Attendance: @(row.AttendancePercentage.HasValue ? row.AttendancePercentage.Value.ToString("0.00") + "%" : "Not recorded")</small></td>
+                        <td class="result-number">@row.ObtainedMarks.ToString("0.##") / @row.MaximumMarks.ToString("0.##")</td>
+                        <td class="result-number">@row.Percentage.ToString("0.00")%</td>
+                        <td class="result-number">@(row.Position?.ToString() ?? "-")</td>
+                        <td><span class="result-status">@row.Grade - @(row.IsPassed ? "Pass" : "Fail")</span><small>@(row.PublishedVersion.HasValue ? "Published - v" + row.PublishedVersion : "Preview")</small></td>
+                        <td>@if(row.PublishedVersion.HasValue){<a class="btn btn-sm btn-outline-primary" asp-action="ResultCard" asp-route-examId="@Model.Exam.Id" asp-route-studentId="@row.StudentId">View card</a>}</td>
                     </tr>
                 }
                 </tbody>
@@ -87,7 +82,7 @@ else
         </div>
         @if (Model.HasPublishedResults)
         {
-            <div class="card-footer"><button class="btn btn-outline-success">Selected Result Cards PDF</button></div>
+            <div class="card-footer results-actions"><span id="resultSelectedCount" role="status">0 selected</span><button id="downloadSelectedResults" class="btn btn-outline-success">Download selected cards</button></div>
         }
     </form>
 }
@@ -102,7 +97,7 @@ else
             <input type="hidden" name="classId" value="@Model.SchoolClass.Id" />
             <input type="hidden" name="sectionId" value="@Model.Section?.Id" />
             <h5>Publish Results</h5>
-            <p class="text-muted mb-2">Publishing stores a stable versioned snapshot. Later grading-setting changes will not rewrite this result.</p>
+            <p class="text-muted mb-2">Generate the final totals, percentages and grades for these students. Then download their result cards below.</p>
             <div><button class="btn btn-success" onclick="return confirm('Publish these results?')">Publish @Model.Rows.Count Result(s)</button></div>
         </form>
     }
@@ -139,3 +134,7 @@ else
         <div class="alert alert-warning">Correction is in progress. Finish marks correction in <strong>Exams & Marks</strong>, verify/lock the changed sheet, then use <strong>Lock Exam</strong>. Return here after the exam becomes MarksLocked.</div>
     }
 }
+
+</div>
+
+@section Scripts { <script src="~/js/results-workspace.js" asp-append-version="true"></script> }

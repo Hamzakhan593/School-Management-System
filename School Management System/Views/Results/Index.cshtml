@@ -1,69 +1,27 @@
 @model School_Management_System.ViewModels.ResultsIndexViewModel
 @{
-    ViewData["Title"] = "Results & Result Cards";
+    ViewData["Title"] = "Result cards";
+    var canManage = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.ExamController);
 }
-
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="mb-1">Results & Result Cards</h2>
-        <div class="text-muted">Calculate, review, publish and print stable result snapshots.</div>
-    </div>
-    <a asp-controller="Exams" asp-action="Index" class="btn btn-outline-secondary">Exams & Marks</a>
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="results-workspace">
+<header class="results-heading"><div><span class="results-eyebrow">RESULT CARDS</span><h1>Review &amp; download results</h1><p>Choose an exam, then choose a class or download results for the whole school.</p></div></header>
+<nav class="results-nav" aria-label="Exams and results"><a asp-controller="Exams" asp-action="Index" asp-route-sessionId="@Model.SelectedSessionId">Exams</a><a asp-controller="Exams" asp-action="Workspace">Enter marks</a><a asp-action="Index" aria-current="page">Result cards</a></nav>
+<form method="get" class="results-panel results-filters"><div><label for="resultSession">Academic session</label><select id="resultSession" name="sessionId" class="form-select">@foreach(var session in Model.Sessions){<option value="@session.Id" selected="@(Model.SelectedSessionId == session.Id)">@session.Name</option>}</select></div><button class="btn btn-outline-primary">Show results</button></form>
+@if(!Model.Exams.Any()){<div class="results-panel"><h2>No results ready yet</h2><p>Approve the subject marks and lock the exam first. It will then appear here.</p><a class="btn btn-primary" asp-controller="Exams" asp-action="Index">Go to exams</a></div>}
+@foreach(var exam in Model.Exams){
+<details class="results-panel result-exam" id="exam-@exam.Id" open="@(Model.Exams.Count == 1)">
+<summary><span><strong>@exam.Title</strong><small>@exam.AcademicSession.Name · @exam.ExamType</small></span><span class="result-status">@(exam.Status == ExamStatus.MarksLocked ? "Ready to publish" : exam.Status == ExamStatus.Published ? "Published results" : "Archived")</span></summary>
+<div class="result-exam-body"><h2>Which results do you need?</h2><p class="results-note">Open a class to review students, publish results or download individual and class cards.</p>
+<div class="result-class-grid">@foreach(var item in exam.ExamClasses.OrderBy(x=>x.SchoolClass.SortOrder).ThenBy(x=>x.SchoolClass.Name)){
+<a class="result-class-link" asp-action="ClassResult" asp-route-examId="@exam.Id" asp-route-classId="@item.SchoolClassId"><strong>@item.SchoolClass.Name</strong><span>Review students &amp; result cards →</span></a>}
 </div>
-
-<form method="get" class="card card-body mb-4">
-    <div class="row g-2 align-items-end">
-        <div class="col-md-5">
-            <label class="form-label">Academic Session</label>
-            <select name="sessionId" class="form-select">
-                @foreach (var session in Model.Sessions)
-                {
-                    <option value="@session.Id" selected="@(Model.SelectedSessionId == session.Id)">@session.Name (@session.Status)</option>
-                }
-            </select>
-        </div>
-        <div class="col-auto"><button class="btn btn-primary">Load</button></div>
-    </div>
-</form>
-
-@if (Model.Exams.Count == 0)
-{
-    <div class="alert alert-info">No exam with locked/published marks is available for this session. Complete marks verification and lock the exam first.</div>
+@if(!exam.ExamClasses.Any()){<p class="results-empty">No classes assigned to this exam.</p>}
+@if(canManage){
+<div class="result-school-actions"><div><h3>Whole-school results</h3><p>Download all published classes together in one PDF.</p></div>@if(exam.Status == ExamStatus.Published){<a class="btn btn-primary" asp-action="AllResultCardsPdf" asp-route-examId="@exam.Id">Download school PDF</a>}else{<span class="results-note">Publish results first to enable download.</span>}</div>
+@if(exam.Status != ExamStatus.Archived){<details class="result-publish"><summary>Publish results for remaining classes</summary><p>Creates results for classes that have no published results yet. Open an individual class for corrections.</p><form asp-action="PublishSchool" method="post"><input type="hidden" name="examId" value="@exam.Id" /><button class="btn btn-outline-primary">Publish remaining classes</button></form></details>}
 }
-else
-{
-    @foreach (var exam in Model.Exams)
-    {
-        <div class="card mb-3 shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <div>
-                    <strong>@exam.Title</strong>
-                    <span class="text-muted ms-2">@exam.ExamType · @exam.AcademicSession.Name</span>
-                </div>
-                <div class="d-flex align-items-center gap-2">
-                    @if (exam.Status == ExamStatus.Published)
-                    {
-                        <a asp-action="AllResultCardsPdf" asp-route-examId="@exam.Id" class="btn btn-sm btn-success">All Result Cards PDF</a>
-                    }
-                    <span class="badge @(exam.Status == ExamStatus.Published ? "bg-success" : "bg-warning text-dark")">@exam.Status</span>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="row g-2">
-                    @foreach (var examClass in exam.ExamClasses.OrderBy(x => x.SchoolClass.SortOrder).ThenBy(x => x.SchoolClass.Name))
-                    {
-                        <div class="col-md-4">
-                            <a class="btn btn-outline-primary w-100" asp-action="ClassResult" asp-route-examId="@exam.Id" asp-route-classId="@examClass.SchoolClassId">
-                                @examClass.SchoolClass.Name Result
-                            </a>
-                        </div>
-                    }
-                </div>
-                @if (exam.ExamClasses.Count == 0)
-                {
-                    <div class="text-muted">No classes are assigned to this exam.</div>
-                }
-            </div>
-        </div>
-    }
+</div></details>
 }
+</div>
+@section Scripts { <script src="~/js/results-workspace.js" asp-append-version="true"></script> }

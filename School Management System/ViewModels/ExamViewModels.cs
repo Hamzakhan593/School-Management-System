@@ -3,6 +3,14 @@ using School_Management_System.Models;
 
 namespace School_Management_System.ViewModels;
 
+public class MarksWorkspaceViewModel
+{
+    public int? ExamId { get; set; }
+    public int? ClassId { get; set; }
+    public IReadOnlyList<Exam> Exams { get; set; } = [];
+    public IReadOnlyList<ExamSubject> Subjects { get; set; } = [];
+}
+
 public class ExamIndexViewModel
 {
     public int? SelectedSessionId { get; set; }

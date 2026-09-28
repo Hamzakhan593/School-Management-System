@@ -2,8 +2,10 @@
 @{
     ViewData["Title"] = "Create Exam";
 }
+<link rel="stylesheet" href="~/css/results-workspace.css" asp-append-version="true" />
+<div class="results-workspace">
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div><h1 class="h3 mb-1">Create Exam</h1><p class="text-muted mb-0">Create the exam header first. Classes and subjects are configured next.</p></div>
+    <div><h1 class="h3 mb-1">Create Exam</h1><p class="text-muted mb-0">Enter the exam name and dates. Add classes and subjects in the next step.</p></div>
     <a class="btn btn-outline-secondary" asp-action="Index" asp-route-sessionId="@Model.AcademicSessionId">Back</a>
 </div>
 <div class="card shadow-sm"><div class="card-body">
@@ -13,4 +15,5 @@
         <div class="mt-4"><button class="btn btn-primary">Create Exam</button></div>
     </form>
 </div></div>
+</div>
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }

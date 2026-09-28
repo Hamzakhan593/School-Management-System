@@ -1,0 +1,19 @@
+@model School_Management_System.ViewModels.MarksWorkspaceViewModel
+@{ ViewData["Title"] = "Enter student marks"; }
+<link rel="stylesheet" href="~/css/academics.css" asp-append-version="true" />
+<div class="academic-page">
+<header class="academic-heading"><div><span class="academic-eyebrow">TEACHER WORKSPACE</span><h1>Enter student marks</h1><p>Choose the exam and class, then open the subject whose papers you checked.</p></div><a class="btn btn-outline-primary" asp-action="Index">Exams &amp; setup</a></header>
+<form method="get" class="academic-panel academic-filters">
+    <div><label for="examChoice">1. Choose exam</label><select id="examChoice" name="examId" class="form-select">@foreach(var e in Model.Exams) { <option value="@e.Id" selected="@(e.Id == Model.ExamId)">@e.Title · @e.AcademicSession.Name</option> }</select></div>
+    <div><label for="classChoice">2. Choose class</label><select id="classChoice" name="classId" class="form-select"><option value="">All my classes</option>@foreach(var c in Model.Subjects.Select(x => x.SchoolClass).DistinctBy(x => x.Id)) { <option value="@c.Id" selected="@(c.Id == Model.ClassId)">@c.Name</option> }</select></div>
+    <button class="btn btn-primary">Show subjects</button>
+</form>
+<h2 class="h4">3. Open your subject</h2>
+<div class="academic-grid">
+@foreach(var s in Model.Subjects.Where(x => !Model.ClassId.HasValue || x.SchoolClassId == Model.ClassId))
+{
+    <article class="academic-panel academic-subject"><span class="academic-tag">@s.SchoolClass.Name</span><h3>@s.Subject.Title</h3><p>Maximum @s.MaxMarks.ToString("0.##") marks · Pass @s.PassMarks.ToString("0.##")</p><p class="small">@(s.Exam.Status == ExamStatus.MarksEntryOpen ? "Open the student list, select a section and enter marks." : "Marks are closed. You can review saved sheets.")</p><a class="btn btn-primary" asp-action="Marks" asp-route-examSubjectId="@s.Id">@(s.Exam.Status == ExamStatus.MarksEntryOpen ? "Enter marks" : "Review marks")</a></article>
+}
+</div>
+@if (!Model.Subjects.Any(x => !Model.ClassId.HasValue || x.SchoolClassId == Model.ClassId)) { <div class="academic-panel">No subjects available for this selection. Ask the school administrator to assign your class and subject and open the exam for marks entry.</div> }
+</div>

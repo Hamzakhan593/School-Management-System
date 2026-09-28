@@ -6,6 +6,7 @@
     var canAcademicHistory = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin);
     var requestedTab = Context.Request.Query["tab"].ToString();
     var activeTab = string.IsNullOrWhiteSpace(requestedTab) ? "overview" : requestedTab.ToLowerInvariant();
+    if (!new[] { "overview", "fees", "attendance", "results", "documents", "history" }.Contains(activeTab) || (!canAcademicHistory && (activeTab == "attendance" || activeTab == "results"))) activeTab = "overview";
 }
 
 <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -13,15 +14,20 @@
         <h1 class="h3 mb-1">@s.FullName</h1>
         <div class="text-muted">@s.AdmissionNumber · @(Model.CurrentEnrollment?.ClassName ?? "Class not assigned")</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex flex-wrap gap-2">
         @if (canEdit)
         {
             <a class="btn btn-outline-primary" asp-action="Edit" asp-route-id="@s.Id">Edit Profile</a>
-            <a class="btn btn-primary" asp-action="ChangePlacement" asp-route-id="@s.Id">Change Placement</a>
+            <a class="btn btn-primary" asp-action="ChangePlacement" asp-route-id="@s.Id">Change class / section</a>
         }
         <a class="btn btn-outline-secondary" asp-action="Index" data-student-back>Back to Students</a>
     </div>
 </div>
+
+@if (Model.CurrentEnrollment?.SchoolClassId is null && canEdit)
+{
+    <div class="alert alert-warning">This student needs a class assignment before class attendance and class fees can work. <a asp-action="ChangePlacement" asp-route-id="@s.Id">Assign class / section</a></div>
+}
 
 <div class="card shadow-sm mb-4">
     <div class="card-body">
@@ -117,7 +123,7 @@
                 <div><h2 class="h5 mb-1">Fees</h2><p class="text-muted mb-0">Review challans, receipts and the current outstanding balance.</p></div>
                 @if (User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Principal) || User.IsInRole(AppRoles.Admin) || User.IsInRole(AppRoles.Accountant))
                 {
-                    <div class="d-flex gap-2"><a class="btn btn-primary" asp-controller="Fees" asp-action="Ledger" asp-route-studentId="@s.Id">Open Fee Ledger</a><a class="btn btn-outline-success" asp-controller="Fees" asp-action="CollectPayment" asp-route-studentId="@s.Id">Collect Fee</a></div>
+                    <div class="d-flex flex-wrap gap-2"><a class="btn btn-primary" asp-controller="Fees" asp-action="Ledger" asp-route-studentId="@s.Id">Open Fee Ledger</a><a class="btn btn-outline-success" asp-controller="Fees" asp-action="CollectPayment" asp-route-studentId="@s.Id">Collect Fee</a></div>
                 }
             </div>
         </div></div>
